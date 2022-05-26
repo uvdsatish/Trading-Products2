@@ -155,7 +155,7 @@ if __name__ == '__main__':
 
     # RS for a particular date - default today
     dateTimeObj = datetime.datetime.now()
-    datee= dateTimeObj-datetime.timedelta(days=2)
+    datee= dateTimeObj-datetime.timedelta(days=0)
 
 
     ticker_list = list(df.ticker.unique())
@@ -165,6 +165,8 @@ if __name__ == '__main__':
     rs_d=update_RS(df,rs_dict,datee,con)
 
     rs_d = rs_d[["date","industry","ticker","RS1","RS2","RS3","RS4","RS"]]
+
+    rs_d = get_averageandcount_df(rs_d)
 
     update_ind_groups(con,rs_d,"rs_industry_groups")
 

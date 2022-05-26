@@ -3,6 +3,10 @@
 import pandas as pd
 import psycopg2
 from io import StringIO
+import datetime
+from datetime import timedelta
+from datetime import date
+from dateutil.relativedelta import relativedelta
 
 def connect(params_dic):
     """ Connect to the PostgreSQL database server """
@@ -17,10 +21,10 @@ def connect(params_dic):
     return conn
 
 
-def get_rs_ig(conn):
-    cursor = con.cursor()
-    postgreSQL_select_Query = "select * from rs_industry_groups"
-    cursor.execute(postgreSQL_select_Query)
+def get_rs_ig(conn,dte):
+    cursor = conn.cursor()
+    postgreSQL_select_Query = "select * from rs_industry_groups where date = %s"
+    cursor.execute(postgreSQL_select_Query, (dte,))
     rs_ind_records = cursor.fetchall()
 
     rs_df = pd.DataFrame(rs_ind_records,
@@ -99,8 +103,11 @@ if __name__ == '__main__':
     }
 
     con = connect(param_dic)
+    dateTimeObj = datetime.datetime.now()
+    run_date = dateTimeObj - datetime.timedelta(days=0)
+    run_date = run_date.strftime("%Y-%m-%d")
 
-    rss_df = get_rs_ig(con)
+    rss_df = get_rs_ig(con,run_date)
     ind_groups = list(rss_df.industry.unique())
 
     fin_df = pd.DataFrame()

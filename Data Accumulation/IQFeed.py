@@ -80,7 +80,7 @@ def get_historical_data(l_tickers):
         count = count+1
         # Construct the message needed by IQFeed to retrieve data
 
-        message = "HDT,%s,19000101,20250101\n" % sym
+        message = "HDT,%s,20220521,20250101\n" % sym
         message = bytes(message, encoding='utf-8')
 
         # Open a streaming socket to the IQFeed server locally
@@ -184,7 +184,7 @@ if __name__ == '__main__':
     con = connect(param_dic)
 
     #list_tickers = get_tickers_list(con)
-    #list_tickers =["CNNB"]
+    list_tickers =['EWBC','ZNGA','NTGR','NAD','MPAY', 'KMT', 'IQV', 'PRTY', 'UTME','EGLE']
     df = get_historical_data(list_tickers)
 
     copy_from_stringio(con, df, "usstockseod")

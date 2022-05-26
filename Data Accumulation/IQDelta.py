@@ -22,18 +22,90 @@ def connect(params_dic):
     print("Connection successful")
     return conn
 
-def get_dates_tickers(conn):
-    cursor = con.cursor()
-    postgreSQL_select_Query = "select * from usstockseod"
+def get_rs_tickers(conn):
+    cursor = conn.cursor()
+    postgreSQL_select_Query = "select ticker from industry_groups"
     cursor.execute(postgreSQL_select_Query)
     stock_records = cursor.fetchall()
 
     df = pd.DataFrame(stock_records,
-                      columns=['ticker', 'timestamp', 'high', 'low', 'open', 'close', 'volume', 'openinterest'])
+                      columns=['ticker'])
+    RS_list = tuple(df.ticker.unique())
+    return RS_list
+
+def get_dates_onlyRS_tickers(conn, rss_list):
+    cursor = conn.cursor()
+    postgreSQL_select_Query = "select ticker, timestamp from usstockseod where ticker in %s" % (rss_list,)
+    cursor.execute(postgreSQL_select_Query)
+    stock_records = cursor.fetchall()
+
+    df = pd.DataFrame(stock_records,
+                      columns=['ticker', 'timestamp'])
     t_list = list(df.ticker.unique())
+    count=0
+    dct_dates ={}
+    total = len(t_list)
+    print(total)
 
     for ticker in t_list:
         count = count + 1
+        print(count)
+        t_df = df.loc[df['ticker'] == ticker]
+        dct_dates[ticker] = t_df['timestamp'].max() + datetime.timedelta(days=1)
+
+    for sym, dte in dct_dates.items():
+        dct_dates[sym] = pd.Timestamp(dct_dates[sym])
+        dct_dates[sym] = dct_dates[sym].to_pydatetime()
+        dct_dates[sym] = dct_dates[sym].strftime("%Y%m%d")
+
+    return dct_dates
+
+
+def get_dates_missed_tickers(conn, miss_list):
+    cursor = conn.cursor()
+    postgreSQL_select_Query = "select ticker, timestamp from usstockseod where ticker in %s" % (miss_list,)
+    cursor.execute(postgreSQL_select_Query)
+    stock_records = cursor.fetchall()
+
+    df = pd.DataFrame(stock_records,
+                      columns=['ticker', 'timestamp'])
+    t_list = list(df.ticker.unique())
+    count=0
+    dct_dates ={}
+    total = len(t_list)
+    print(total)
+
+    for ticker in t_list:
+        count = count + 1
+        print(count)
+        t_df = df.loc[df['ticker'] == ticker]
+        dct_dates[ticker] = t_df['timestamp'].max() + datetime.timedelta(days=1)
+
+    for sym, dte in dct_dates.items():
+        dct_dates[sym] = pd.Timestamp(dct_dates[sym])
+        dct_dates[sym] = dct_dates[sym].to_pydatetime()
+        dct_dates[sym] = dct_dates[sym].strftime("%Y%m%d")
+
+    return dct_dates
+
+
+def get_dates_tickers(conn):
+    cursor = conn.cursor()
+    postgreSQL_select_Query = "select ticker, timestamp from usstockseod"
+    cursor.execute(postgreSQL_select_Query)
+    stock_records = cursor.fetchall()
+
+    df = pd.DataFrame(stock_records,
+                      columns=['ticker', 'timestamp'])
+    t_list = list(df.ticker.unique())
+    count=0
+    dct_dates ={}
+    total = len(t_list)
+    print(total)
+
+    for ticker in t_list:
+        count = count + 1
+        print(count)
         t_df = df.loc[df['ticker'] == ticker]
         dct_dates[ticker] = t_df['timestamp'].max() + datetime.timedelta(days=1)
 
@@ -161,9 +233,17 @@ if __name__ == '__main__':
 
     con = connect(param_dic)
 
-    date_tickers = get_dates_tickers(con)
+    mis_list = ('VWTR','AAPL')
+    date_tickers = get_dates_missed_tickers(con, mis_list)
+
+    #rs_list = get_rs_tickers(con)
+    #date_tickers = get_dates_onlyRS_tickers(con,rs_list)
+
+    #date_tickers = get_dates_tickers(con)
+
 
     up_df = get_historical_data(date_tickers)
+
     copy_from_stringio(con, up_df, "usstockseod")
 
     con.close()

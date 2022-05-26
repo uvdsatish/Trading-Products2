@@ -88,6 +88,7 @@ if __name__ == '__main__':
     DATABASE_URI = 'postgresql+psycopg2://postgres:root@localhost:5432/Plurality'
     engine = create_engine(DATABASE_URI)
 
+    Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
 
     con = connect(param_dic)

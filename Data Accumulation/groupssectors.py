@@ -50,7 +50,8 @@ def get_sectors_data(sects,a_df):
 
     for s in sects:
         t_df = s_df.loc[s_df['sector'] == s]
-        s_tot_df = pd.concat([s_tot_df, t_df.head(10)])
+        t_df = t_df.loc[t_df['volume']>=100]
+        s_tot_df = pd.concat([s_tot_df, t_df.head(20)])
 
     return s_tot_df
 
@@ -64,6 +65,7 @@ def get_ig_data(grps, a_df):
 
     for g in grps:
         t_df = ig_df.loc[ig_df['industry'] == g]
+        t_df = t_df.loc[t_df['volume']>=100]
         ig_tot_df = pd.concat([ig_tot_df, t_df.head(10)])
 
     return ig_tot_df
