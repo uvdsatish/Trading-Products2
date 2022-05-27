@@ -1,4 +1,4 @@
-# This script creates sector and groups tables with top market cap stocks
+# This script creates sector and groups tables with top market cap stocks- just GIT testing
 
 import pandas as pd
 import psycopg2
