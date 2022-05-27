@@ -18,12 +18,12 @@ def connect(params_dic):
 
 def get_excel_df(conn,dte):
     cursor = conn.cursor()
-    postgreSQL_select_Query = "select * from rs_industry_groups where date = %s"
+    postgreSQL_select_Query = "select * from iblkupall where industry = %s"
     cursor.execute(postgreSQL_select_Query,(dte,))
     rs_ind_records = cursor.fetchall()
 
     rs_df = pd.DataFrame(rs_ind_records,
-                         columns=['date', 'industry', 'ticker', 'rs1', 'rs2', 'rs3', 'rs4', 'rs'])
+                         columns=['industry', 'ticker', 'name', 'sector', 'volume','marketcap'])
 
     return rs_df
 
@@ -40,17 +40,17 @@ if __name__ == '__main__':
 
     con = connect(param_dic)
 
-    delta_days_from_current_date = 6
+    delta_days_from_current_date = 0
     dateTimeObj = datetime.datetime.now()
     run_date = dateTimeObj - datetime.timedelta(days=delta_days_from_current_date)
     run_date = run_date.strftime("%Y-%m-%d")
 
     print(run_date)
 
-    rss_df = get_excel_df(con, run_date)
+    rss_df = get_excel_df(con, "Finance-ETF / ETN")
 
 
-    rss_df.to_excel(r"C:\Users\uvdsa\Documents\Trading\Scripts\plurality-input.xlsx", index=False)
+    rss_df.to_excel(r"C:\Users\uvdsa\Documents\Trading\Scripts\ETF.xlsx", index=False)
 
 
 
