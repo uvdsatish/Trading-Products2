@@ -91,6 +91,52 @@ def get_plurality_df(rs_df):
 
     return fin_df
 
+def get_leaders_laggards(con,fin_df):
+    top_groups = list(fin_df['p5090'])
+    bottom_groups = list(fin_df['p5010'])
+
+    leaders_list = get_leaders(con,top_groups)
+    laggards_list = get_laggards(con,bottom_groups)
+
+    fin_df['leaders'] = pd.Series(leaders_list)
+    fin_df['laggards'] = pd.Series(laggards_list)
+
+    fin_df.fillna("", inplace=True)
+
+    fin_df = fin_df.reindex(columns=['p5090', 'p4080', 'p5010', 'p4020', 'leaders', 'laggards'])
+
+    return fin_df
+
+def get_leaders(conn,t_g):
+    cursor = conn.cursor()
+    postgreSQL_select_Query = "select industry, ticker, rs from rs_industry_groups"
+    cursor.execute(postgreSQL_select_Query)
+    stock_records = cursor.fetchall()
+
+    df = pd.DataFrame(stock_records,
+                      columns=['industry','ticker', 'rs'])
+    df = df[df['industry'].isin(t_g)]
+    df.sort_values(by=['rs'],inplace=True,ascending=False)
+    t_list = list(df.ticker.unique())
+    num_l = int(round(0.1*len(t_list),0))
+    return t_list[0:num_l]
+
+
+def get_laggards(conn,b_g):
+    cursor = conn.cursor()
+    postgreSQL_select_Query = "select industry, ticker, rs from rs_industry_groups"
+    cursor.execute(postgreSQL_select_Query)
+    stock_records = cursor.fetchall()
+
+    df = pd.DataFrame(stock_records,
+                      columns=['industry','ticker', 'rs'])
+    df = df[df['industry'].isin(b_g)]
+    df.sort_values(by=['rs'], inplace=True)
+    b_list = list(df.ticker.unique())
+    num_b = int(round(0.1*len(b_list),0))
+    return b_list[0:num_b]
+
+
 
 
 if __name__ == '__main__':
@@ -115,7 +161,11 @@ if __name__ == '__main__':
 
     plu_df = get_plurality_df(rss_df)
 
-    plu_df.to_excel(r"C:\Users\uvdsa\Documents\Trading\Scripts\plurality-output.xlsx", index=False)
+    ll_df = get_leaders_laggards(con,plu_df)
+
+    ll_df.to_excel(r"C:\Users\uvdsa\Documents\Trading\Scripts\plurality-output.xlsx", index=False)
+
+    con.close()
 
 
 

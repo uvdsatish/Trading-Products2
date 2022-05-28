@@ -233,7 +233,7 @@ if __name__ == '__main__':
 
     con = connect(param_dic)
 
-    mis_list = ('VRE', 'SG', 'VABS')
+    mis_list = ('SPUC', 'LFMD')
     date_tickers = get_dates_missed_tickers(con, mis_list)
 
     #rs_list = get_rs_tickers(con)

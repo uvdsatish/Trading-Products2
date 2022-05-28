@@ -37,9 +37,12 @@ def get_tickers(conn):
 def get_rs_ticker(conn,tkr_list,dat):
     rs_dict ={}
     excp =[]
+    count = 0
+    tot = len(tkr_list)
 
     for ticker in tkr_list:
-        print("calculating RS for ticker %s" % ticker)
+        count = count + 1
+        print("calculating RS for ticker %s %s/%s" % (ticker, count,  tot))
         df=get_close_ticker(conn, ticker)
         if len(df.index) == 0:
             rs_dict[ticker]=[None, None, None, None, None]
