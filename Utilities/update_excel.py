@@ -18,7 +18,7 @@ def connect(params_dic):
 
 def get_excel_df(conn,dte):
     cursor = conn.cursor()
-    postgreSQL_select_Query = "select * from iblkupall where industry = %s"
+    postgreSQL_select_Query = "select * from iblkupall where sector = %s"
     cursor.execute(postgreSQL_select_Query,(dte,))
     rs_ind_records = cursor.fetchall()
 
@@ -47,10 +47,10 @@ if __name__ == '__main__':
 
     print(run_date)
 
-    rss_df = get_excel_df(con, "Finance-ETF / ETN")
+    rss_df = get_excel_df(con, "MISC")
 
 
-    rss_df.to_excel(r"C:\Users\uvdsa\Documents\Trading\Scripts\ETF.xlsx", index=False)
+    rss_df.to_excel(r"C:\Users\uvdsa\Documents\Trading\Scripts\Unmapped.xlsx", index=False)
 
 
 

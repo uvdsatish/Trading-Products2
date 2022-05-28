@@ -3,10 +3,7 @@
 import pandas as pd
 import psycopg2
 import datetime
-#from datetime import datetime
-from datetime import timedelta
-from datetime import date
-from dateutil.relativedelta import relativedelta
+import sys
 from io import StringIO
 
 
@@ -39,11 +36,11 @@ def get_rs_ticker(conn,tkr_list,dat):
 
     for ticker in tkr_list:
         df=get_rs_values_ticker(conn, ticker,dat)
-        RS1 = df.loc[df['ticker']==ticker,'rs1']
-        RS2 = df.loc[df['ticker'] == ticker, 'rs2']
-        RS3 = df.loc[df['ticker'] == ticker, 'rs3']
-        RS4 = df.loc[df['ticker'] == ticker, 'rs4']
-        RS = df.loc[df['ticker'] == ticker, 'rs5']
+        RS1 = df.loc[df['ticker']==ticker,'rs1'].values[0]
+        RS2 = df.loc[df['ticker'] == ticker, 'rs2'].values[0]
+        RS3 = df.loc[df['ticker'] == ticker, 'rs3'].values[0]
+        RS4 = df.loc[df['ticker'] == ticker, 'rs4'].values[0]
+        RS = df.loc[df['ticker'] == ticker, 'rs'].values[0]
         rs_dict[ticker]=[RS1,RS2,RS3,RS4,RS]
 
     return rs_dict
@@ -56,26 +53,27 @@ def get_rs_values_ticker(connn, ticker,datt):
     cursor.execute(postgreSQL_select_Query, [ticker, ])
     rs_values = cursor.fetchall()
     rs_df = pd.DataFrame(rs_values, columns=['date', 'ticker', 'rs1', 'rs2','rs3','rs4','rs'])
+    dattt = datetime.datetime.strptime(datt,'%Y-%m-%d').date()
+    rs_df = rs_df.loc[rs_df['date']==dattt]
 
     return rs_df
 
 
 
 
-def update_RS(ddf,RS_dict,dateee,conn):
+def update_RS(ddf,RS_dict,dateee):
     #get the data frame: timestamp, date, sector, ticker, RS1, RS2, RS3, RS4, RS
     rs_df = pd.DataFrame()
-    rs_df['timestamp'] = pd.Series([datetime.datetime.timestamp(datee)for x in range(len(ddf.index))])
-    rs_df['date'] = pd.Series([dateee.strftime('%Y-%m-%d')for x in range(len(ddf.index))])
-    rs_df['industry'] = ddf['industry']
+    rs_df['date'] = pd.Series([dateee for x in range(len(ddf.index))])
+    rs_df['sector'] = ddf['sector']
     rs_df['ticker'] = ddf['ticker']
 
     for t,rs_list in RS_dict.items():
-        rs_df.loc[rs_df['ticker']== t,'RS1'] = rs_list[0]
-        rs_df.loc[rs_df['ticker'] == t,'RS2'] = rs_list[1]
-        rs_df.loc[rs_df['ticker'] == t,'RS3'] = rs_list[2]
-        rs_df.loc[rs_df['ticker'] == t,'RS4'] = rs_list[3]
-        rs_df.loc[rs_df['ticker'] == t,'RS'] = rs_list[4]
+        rs_df.loc[rs_df['ticker']== t,'rs1'] = rs_list[0]
+        rs_df.loc[rs_df['ticker'] == t,'rs2'] = rs_list[1]
+        rs_df.loc[rs_df['ticker'] == t,'rs3'] = rs_list[2]
+        rs_df.loc[rs_df['ticker'] == t,'rs4'] = rs_list[3]
+        rs_df.loc[rs_df['ticker'] == t,'rs'] = rs_list[4]
 
     return rs_df
 
@@ -121,18 +119,20 @@ if __name__ == '__main__':
 
     # RS for a particular date - default today
     dateTimeObj = datetime.datetime.now()
-    datee= dateTimeObj-datetime.timedelta(days=0)
+    datee= dateTimeObj-datetime.timedelta(days=1)
+    datee = datee.strftime("%Y-%m-%d")
+    print(datee)
 
 
     ticker_list = list(df.ticker.unique())
 
     rs_dict=get_rs_ticker(con,ticker_list,datee)
 
-    rs_d=update_RS(df,rs_dict,datee,con)
+    rs_d=update_RS(df,rs_dict,datee)
 
-    rs_d = rs_d[["date","sector","ticker","RS1","RS2","RS3","RS4","RS"]]
+    rs_d = rs_d[["date","sector","ticker","rs1","rs2","rs3","rs4","rs"]]
 
-    update_ind_groups(con,rs_d,"rs_sectors")
+    update_sectors_rs(con,rs_d,"rs_sectors")
 
     con.close()
 
