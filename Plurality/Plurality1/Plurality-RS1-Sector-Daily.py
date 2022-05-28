@@ -1,4 +1,4 @@
-#This script is to calculate daily WAM RS values for industry/ticker
+#This script is to calculate daily WAM RS values for Sector/Ticker combo
 
 import pandas as pd
 import psycopg2
@@ -7,7 +7,7 @@ import datetime
 from datetime import timedelta
 from datetime import date
 from dateutil.relativedelta import relativedelta
-from io import StringIOfo
+from io import StringIO
 
 
 def connect(params_dic):
@@ -25,82 +25,45 @@ def connect(params_dic):
 
 def get_tickers(conn):
     cursor = conn.cursor()
-    postgreSQL_select_Query = "select industry, ticker from industry_groups"
+    postgreSQL_select_Query = "select sector, ticker from industry_groups"
     cursor.execute(postgreSQL_select_Query)
     ig_records = cursor.fetchall()
 
     df = pd.DataFrame(ig_records,
-                      columns=['industry', 'ticker'] )
+                      columns=['sector', 'ticker'] )
     return df
 
 
 def get_rs_ticker(conn,tkr_list,dat):
-    rs_dict ={}
-    excp =[]
-    count = 0
-    tot = len(tkr_list)
+    rs_dict = {}
 
     for ticker in tkr_list:
-        count = count + 1
-        print("calculating RS for ticker %s %s/%s" % (ticker, count,  tot))
-        df=get_close_ticker(conn, ticker)
-        if len(df.index) == 0:
-            rs_dict[ticker]=[None, None, None, None, None]
-            excp.append(ticker)
-        else:
-            RS1 = calculate_RS(df, dat, 3)
-            RS2 = calculate_RS(df, dat, 6)
-            RS3 = calculate_RS(df, dat, 9)
-            RS4 = calculate_RS(df, dat, 12)
-            if (RS1 == None or RS2==None or RS3==None or RS4==None):
-                RS=None
-                excp.append(ticker)
-            else:
-                RS = round(0.4*RS1+0.2*RS2+0.2*RS3+0.2*RS4,0)
-            rs_dict[ticker]=[RS1,RS2,RS3,RS4,RS]
-
-    print(excp)
+        df=get_rs_values_ticker(conn, ticker,dat)
+        RS1 = df.loc[df['ticker']==ticker,'rs1']
+        RS2 = df.loc[df['ticker'] == ticker, 'rs2']
+        RS3 = df.loc[df['ticker'] == ticker, 'rs3']
+        RS4 = df.loc[df['ticker'] == ticker, 'rs4']
+        RS = df.loc[df['ticker'] == ticker, 'rs5']
+        rs_dict[ticker]=[RS1,RS2,RS3,RS4,RS]
 
     return rs_dict
 
 
 
-def get_close_ticker(connn, ticker):
+def get_rs_values_ticker(connn, ticker,datt):
     cursor = connn.cursor()
-    postgreSQL_select_Query = """select ticker, timestamp, close from usstockseod u where u.ticker = %s order by timestamp desc;"""
+    postgreSQL_select_Query = """select date,ticker,rs1,rs2,rs3,rs4,rs from rs_industry_groups r where r.ticker = %s ;"""
     cursor.execute(postgreSQL_select_Query, [ticker, ])
-    close_prices = cursor.fetchall()
-    c_f = pd.DataFrame(close_prices, columns=['ticker', 'timestamp', 'close'])
-    c_f['date'] = pd.to_datetime(c_f['timestamp'])
-    c_f['date'] = c_f['date'].dt.strftime('%Y-%m-%d')
-    c_f.sort_values(by='date', ascending=False, inplace=True)
+    rs_values = cursor.fetchall()
+    rs_df = pd.DataFrame(rs_values, columns=['date', 'ticker', 'rs1', 'rs2','rs3','rs4','rs'])
 
-    return c_f
+    return rs_df
 
-
-def calculate_RS(ddf,edate,m):
-    bdate = edate - relativedelta(months=m)
-    edate = edate.strftime('%Y-%m-%d')
-    bdate = bdate.strftime('%Y-%m-%d')
-
-    sub_df = ddf[(ddf['date'] >= bdate) & (ddf['date'] <= edate)]
-
-    if len(sub_df.index) == 0:
-        return None
-    else:
-        close_price =sub_df[sub_df['date']==edate]['close']
-        lowest_price =sub_df['close'].min()
-        highest_price =sub_df['close'].max()
-        if (len(close_price.index) == 0) or (highest_price == lowest_price):
-            return None
-        else:
-            RS = round(((close_price.iloc[0] - lowest_price) / (highest_price - lowest_price)) * 100, 0)
-            return RS
 
 
 
 def update_RS(ddf,RS_dict,dateee,conn):
-    #get the data frame: timestamp, date, industry group, ticker, RS1, RS2, RS3, RS4, RS
+    #get the data frame: timestamp, date, sector, ticker, RS1, RS2, RS3, RS4, RS
     rs_df = pd.DataFrame()
     rs_df['timestamp'] = pd.Series([datetime.datetime.timestamp(datee)for x in range(len(ddf.index))])
     rs_df['date'] = pd.Series([dateee.strftime('%Y-%m-%d')for x in range(len(ddf.index))])
@@ -117,7 +80,7 @@ def update_RS(ddf,RS_dict,dateee,conn):
     return rs_df
 
 
-def update_ind_groups(conn, dff, table):
+def update_sectors_rs(conn, dff, table):
     """
     Here we are going save the dataframe in memory
     and use copy_from() to copy it to the table
@@ -167,9 +130,9 @@ if __name__ == '__main__':
 
     rs_d=update_RS(df,rs_dict,datee,con)
 
-    rs_d = rs_d[["date","industry","ticker","RS1","RS2","RS3","RS4","RS"]]
+    rs_d = rs_d[["date","sector","ticker","RS1","RS2","RS3","RS4","RS"]]
 
-    update_ind_groups(con,rs_d,"rs_industry_groups")
+    update_ind_groups(con,rs_d,"rs_sectors")
 
     con.close()
 
