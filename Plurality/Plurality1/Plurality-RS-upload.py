@@ -5,9 +5,7 @@ import pandas as pd
 import psycopg2
 from io import StringIO
 import datetime
-from datetime import timedelta
-from datetime import date
-from dateutil.relativedelta import relativedelta
+import sys
 
 def connect(params_dic):
     """ Connect to the PostgreSQL database server """
@@ -59,10 +57,14 @@ def update_plurality_df(ind_groups, rss_df, fin_df):
         p5010_f = check_flag(tmp_df, 50, 10, "short")
         p4020_f = check_flag(tmp_df, 40, 20, "short")
         AvgRS = tmp_df['rs'].mean()
-        c80 = len(tmp_df.loc[tmp_df['rs'] >=80].index)
-        c90 = len(tmp_df.loc[tmp_df['rs'] >=90].index)
-        c10 = len(tmp_df.loc[tmp_df['rs'] <=10].index)
-        c20 = len(tmp_df.loc[tmp_df['rs'] <=20].index)
+        c65 = len(tmp_df.loc[tmp_df['rs'] >= 65].index)
+        c70 = len(tmp_df.loc[tmp_df['rs'] >= 70].index)
+        c80 = len(tmp_df.loc[tmp_df['rs'] >= 80].index)
+        c90 = len(tmp_df.loc[tmp_df['rs'] >= 90].index)
+        c35 = len(tmp_df.loc[tmp_df['rs'] <= 35].index)
+        c30 = len(tmp_df.loc[tmp_df['rs'] <= 30].index)
+        c10 = len(tmp_df.loc[tmp_df['rs'] <= 10].index)
+        c20 = len(tmp_df.loc[tmp_df['rs'] <= 20].index)
         totC = tmp_df.shape[0]
 
 
@@ -75,6 +77,10 @@ def update_plurality_df(ind_groups, rss_df, fin_df):
         fin_df.loc[fin_df['industry'] == group, 'c90'] = c90
         fin_df.loc[fin_df['industry'] == group, 'c10'] = c10
         fin_df.loc[fin_df['industry'] == group, 'c20'] = c20
+        fin_df.loc[fin_df['industry'] == group, 'c65'] = c65
+        fin_df.loc[fin_df['industry'] == group, 'c70'] = c70
+        fin_df.loc[fin_df['industry'] == group, 'c35'] = c35
+        fin_df.loc[fin_df['industry'] == group, 'c30'] = c30
         fin_df.loc[fin_df['industry'] == group, 'totC'] = totC
 
 
@@ -119,7 +125,7 @@ if __name__ == '__main__':
 
     con = connect(param_dic)
     dateTimeObj = datetime.datetime.now()
-    run_date = dateTimeObj - datetime.timedelta(days=0)
+    run_date = dateTimeObj - datetime.timedelta(days=3)
     run_date = run_date.strftime("%Y-%m-%d")
     print(run_date)
 
@@ -132,7 +138,7 @@ if __name__ == '__main__':
 
     fin_df = update_plurality_df(ind_groups, rss_df, fin_df)
 
-    fin_df = fin_df[['date','industry','p5090', 'p4080', 'p5010', 'p4020', 'c80','c90','c10','c20','totC','AvgRS']]
+    fin_df = fin_df[['date','industry','p5090', 'p4080', 'p5010', 'p4020', 'c80','c90','c10','c20','totC','AvgRS','c65','c70','c35','c30']]
 
 
     update_ind_groups_plurality(con,fin_df,"rs_industry_groups_plurality")
