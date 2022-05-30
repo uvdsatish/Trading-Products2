@@ -117,7 +117,7 @@ if __name__ == '__main__':
 
     con = connect(param_dic)
     dateTimeObj = datetime.datetime.now()
-    run_date = dateTimeObj - datetime.timedelta(days=0)
+    run_date = dateTimeObj - datetime.timedelta(days=1)
     run_date = run_date.strftime("%Y-%m-%d")
     print(run_date)
 
@@ -130,7 +130,7 @@ if __name__ == '__main__':
 
     fin_df = update_plurality_df(sectors, rss_df, fin_df)
 
-    fin_df = fin_df[['date','sectors','p5090', 'p4080', 'p5010', 'p4020', 'c80','c90','c10','c20','totC','AvgRS']]
+    fin_df = fin_df[['date','sector','p5090', 'p4080', 'p5010', 'p4020', 'c80','c90','c10','c20','totC','AvgRS']]
 
 
     update_sectors_plurality(con,fin_df,"rs_sectors_plurality")

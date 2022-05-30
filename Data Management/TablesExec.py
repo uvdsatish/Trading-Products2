@@ -44,11 +44,11 @@ def create_tables(conn):
             P4080 VARCHAR DEFAULT 'N',
             P5010 VARCHAR DEFAULT 'N',
             P4020 VARCHAR DEFAULT 'N',
-            c80 INTEGER,
-            c90 INTEGER,
-            c10 INTEGER,
-            c20 INTEGER,
-            totC INTEGER,
+            c80 FLOAT,
+            c90 FLOAT,
+            c10 FLOAT,
+            c20 FLOAT,
+            totC FLOAT,
             AvgRS FLOAT,
             PRIMARY KEY (date, sector) 
             )         
