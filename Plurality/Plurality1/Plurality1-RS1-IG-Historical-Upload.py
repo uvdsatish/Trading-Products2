@@ -28,7 +28,7 @@ def get_distinct_ig(conn):
 
     rs_df = pd.DataFrame(rs_ind_records,
                       columns=['industry'])
-    ig_list = rs_df.to_list()
+    ig_list = rs_df['industry'].to_list()
 
     return ig_list
 
@@ -54,12 +54,11 @@ def get_rs_dates(conn):
     rs_df = pd.DataFrame(rs_ind_records,
                          columns=['date'])
 
-    dates_str = rs_df.to_list()
+    dates_str = rs_df['date'].to_list()
 
     return dates_str
 
 
-yu
 
 def update_plurality_df(ind_groups, rss_df, fin_df):
     tmp_df = pd.DataFrame()
@@ -99,6 +98,24 @@ def update_plurality_df(ind_groups, rss_df, fin_df):
 
     return fin_df
 
+def check_flag(tmp_df, prop, thres, dir):
+    tot = len(tmp_df.index)
+    if dir == "long":
+        gt_df = tmp_df.loc[tmp_df['rs'] >= thres]
+        gt = len(gt_df.index)
+        rs_prop = (gt / tot) * 100
+    else:
+        lt_df = tmp_df.loc[tmp_df['rs'] <= thres]
+        lt = len(lt_df.index)
+        rs_prop = (lt / tot) * 100
+
+    if rs_prop >= prop:
+        return "Y"
+    else:
+        return "N"
+
+
+
 def update_ind_groups_plurality(conn, dff, table):
     """
     Here we are going save the dataframe in memory
@@ -130,7 +147,7 @@ def update_historical_plurality(rss_df,date_str,ind_groups):
     for dte in date_str:
         tmp_df = pd.DataFrame()
         tmp_df['industry'] = ind_groups
-        tmp_df['date'] = pd.Series([dte for x in range(len(tmo_df.index))])
+        tmp_df['date'] = pd.Series([dte for x in range(len(tmp_df.index))])
 
         tmp_df = update_plurality_df(ind_groups, rss_df, tmp_df)
         tmp_df = tmp_df[
