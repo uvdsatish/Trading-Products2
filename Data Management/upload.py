@@ -1,6 +1,7 @@
 """ This script is upload historical data from a csv file"""
-import pandas as pd
+
 import psycopg2
+import sys
 
 def connect(params_dic):
     """ Connect to the PostgreSQL database server """
@@ -20,7 +21,7 @@ def copy_from_csv(conn, table):
     and use copy_from() to copy it to the table
     """
     # save dataframe to an in memory buffer
-    f = open(r'C:\Users\uvdsa\Documents\Trading\Scripts\test.csv', 'r')
+    f = open(r'C:\Users\uvdsa\Documents\Trading\Scripts\plurality-IG_historical370-test.csv', 'r')
     #buffer = StringIO()
     #dff.to_csv(buffer, index_label='id', header=False)
 
@@ -50,6 +51,6 @@ if __name__ == '__main__':
 
     con=connect(param_dic)
 
-    copy_from_csv(con,"usstockseod")
+    copy_from_csv(con,"rs_industry_groups_history")
 
     con.close()

@@ -1,10 +1,18 @@
-#This script is to calculate daily WAM RS values for industry/ticker
+#This script is to calculate daily WAM RS values for industry/ticker historically for certain number of days
+# how many calendar days to run for a group of ticker/portfolio combo - get this as input
+# get all the trading dates - say for AAPL and use those dates for all the tickers or use the logic you implied
+# now you've dates in a list and tickers in a list
+# get all us stockseod data for all tickers and all dates in a dataframe
+# for a date calculate the RS for all tickers
+# repeat for all dates and then add the dataframe to the table
+# what about IPOs, and missing tickers for certain dates?
 
 import pandas as pd
 import psycopg2
 import datetime
 from dateutil.relativedelta import relativedelta
 from io import StringIO
+import sys
 
 
 def connect(params_dic):
@@ -19,8 +27,19 @@ def connect(params_dic):
     print("Connection successful")
     return conn
 
+def get_rs_tickers(conn):
+    cursor = conn.cursor()
+    postgreSQL_select_Query = "select ticker from industry_groups"
+    cursor.execute(postgreSQL_select_Query)
+    stock_records = cursor.fetchall()
 
-def get_tickers(conn):
+    df = pd.DataFrame(stock_records,
+                      columns=['ticker'])
+    RS_list = tuple(df.ticker.unique())
+    return RS_list
+
+
+def get_industry_tickers(conn):
     cursor = conn.cursor()
     postgreSQL_select_Query = "select industry, ticker from industry_groups"
     cursor.execute(postgreSQL_select_Query)
@@ -31,7 +50,7 @@ def get_tickers(conn):
     return df
 
 
-def get_rs_ticker(conn,tkr_list,dat):
+def get_rs_ticker(mdf,tkr_list,dat):
     rs_dict ={}
     excp =[]
     count = 0
@@ -40,7 +59,7 @@ def get_rs_ticker(conn,tkr_list,dat):
     for ticker in tkr_list:
         count = count + 1
         print("calculating RS for ticker %s %s/%s" % (ticker, count,  tot))
-        df=get_close_ticker(conn, ticker)
+        df = mdf.loc[mdf['ticker']==ticker]
         if len(df.index) == 0:
             rs_dict[ticker]=[None, None, None, None, None]
             excp.append(ticker)
@@ -61,18 +80,20 @@ def get_rs_ticker(conn,tkr_list,dat):
     return rs_dict
 
 
+def  get_allclose_alltickers(conn,ticker_list):
+    cursor = conn.cursor()
+    postgreSQL_select_Query = "select ticker, timestamp, close from usstockseod where ticker in %s" % (ticker_list,)
+    cursor.execute(postgreSQL_select_Query)
+    stock_records = cursor.fetchall()
 
-def get_close_ticker(connn, ticker):
-    cursor = connn.cursor()
-    postgreSQL_select_Query = """select ticker, timestamp, close from usstockseod u where u.ticker = %s order by timestamp desc;"""
-    cursor.execute(postgreSQL_select_Query, [ticker, ])
-    close_prices = cursor.fetchall()
-    c_f = pd.DataFrame(close_prices, columns=['ticker', 'timestamp', 'close'])
+    c_f = pd.DataFrame(stock_records, columns=['ticker', 'timestamp', 'close'])
     c_f['date'] = pd.to_datetime(c_f['timestamp'])
     c_f['date'] = c_f['date'].dt.strftime('%Y-%m-%d')
     c_f.sort_values(by='date', ascending=False, inplace=True)
+    c_f['mod_ts'] = pd.to_datetime(c_f['date'], format='%Y-%m-%d')
 
     return c_f
+
 
 
 def calculate_RS(ddf,edate,m):
@@ -96,10 +117,10 @@ def calculate_RS(ddf,edate,m):
 
 
 
-def update_RS(ddf,RS_dict,dateee,conn):
+def update_RS(ddf,RS_dict,dateee):
     #get the data frame: timestamp, date, industry group, ticker, RS1, RS2, RS3, RS4, RS
     rs_df = pd.DataFrame()
-    rs_df['timestamp'] = pd.Series([datetime.datetime.timestamp(datee)for x in range(len(ddf.index))])
+    rs_df['timestamp'] = pd.Series([datetime.datetime.timestamp(dateee)for x in range(len(ddf.index))])
     rs_df['date'] = pd.Series([dateee.strftime('%Y-%m-%d')for x in range(len(ddf.index))])
     rs_df['industry'] = ddf['industry']
     rs_df['ticker'] = ddf['ticker']
@@ -138,6 +159,31 @@ def update_ind_groups(conn, dff, table):
     print("copy_from_stringio() done")
     cursor.close()
 
+def get_trading_dates(ncd,md_df):
+    delta_days_from_current_date = ncd
+
+    end_date = datetime.datetime.now()
+    begin_date = end_date- datetime.timedelta(days=delta_days_from_current_date)
+
+    app_df = massive_df.loc[massive_df['ticker'] == 'AAPL']
+
+    tmp_str = app_df.loc[(app_df['mod_ts'] >= begin_date) & (app_df['mod_ts'] <= end_date), 'date']
+    dates_str = tmp_str.to_list()
+
+    return dates_str
+
+
+def get_rs_alldates_allRStickers(massive_df,it_df,dates_str,ticker_list):
+    big_df = pd.DataFrame()
+    for dte in dates_str:
+        print("printing for the date %s" % dte)
+        dte_ts = datetime.datetime.strptime(dte, "%Y-%m-%d")
+        date_dct = get_rs_ticker(massive_df,ticker_list,dte_ts)
+        rs_df = update_RS(it_df, date_dct, dte_ts)
+        rs_df = rs_df[["date", "industry", "ticker", "RS1", "RS2", "RS3", "RS4", "RS"]]
+        big_df = pd.concat([big_df, rs_df])
+
+    return big_df
 
 
 if __name__ == '__main__':
@@ -151,22 +197,19 @@ if __name__ == '__main__':
 
     con = connect(param_dic)
 
-    df = get_tickers(con)
+    ticker_list = get_rs_tickers(con)
+
+    massive_df = get_allclose_alltickers(con, ticker_list)
 
     # RS for a particular date - default today
-    dateTimeObj = datetime.datetime.now()
-    datee= dateTimeObj-datetime.timedelta(days=0)
+    NumberofCalendarDays =370
 
+    dates_str= get_trading_dates(NumberofCalendarDays,massive_df)
 
-    ticker_list = list(df.ticker.unique())
+    it_df = get_industry_tickers(con)
+    all_df = get_rs_alldates_allRStickers(massive_df,it_df,dates_str,ticker_list)
 
-    rs_dict=get_rs_ticker(con,ticker_list,datee)
-
-    rs_d=update_RS(df,rs_dict,datee,con)
-
-    rs_d = rs_d[["date","industry","ticker","RS1","RS2","RS3","RS4","RS"]]
-
-    update_ind_groups(con,rs_d,"rs_industry_groups")
+    all_df.to_csv(r"C:\Users\uvdsa\Documents\Trading\Scripts\plurality-IG_historical370_final.csv", index=False, header=False)
 
     con.close()
 
