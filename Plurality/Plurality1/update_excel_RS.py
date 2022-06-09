@@ -3,6 +3,7 @@
 import pandas as pd
 import psycopg2
 import datetime
+import os
 
 def connect(params_dic):
     """ Connect to the PostgreSQL database server """
@@ -23,7 +24,7 @@ def get_plurality_data(conn,dte):
     rs_ind_records = cursor.fetchall()
 
     rs_df = pd.DataFrame(rs_ind_records,
-                         columns=['date', 'industry', 'p5090', 'p4080', 'p5010', 'p4020','c80','c90','c10','c20','totc','avgrs'])
+                         columns=['date', 'industry', 'p5090', 'p4080', 'p5010', 'p4020','c80','c90','c10','c20','totc','avgrs','c65','c70','c35','c30'])
 
     return rs_df
 
@@ -152,8 +153,8 @@ if __name__ == '__main__':
 
     delta_days_from_current_date = 0
     dateTimeObj = datetime.datetime.now()
-    run_date = dateTimeObj - datetime.timedelta(days=delta_days_from_current_date)
-    run_date = run_date.strftime("%Y-%m-%d")
+    run_date2 = dateTimeObj - datetime.timedelta(days=delta_days_from_current_date)
+    run_date = run_date2.strftime("%Y-%m-%d")
 
     print(run_date)
 
@@ -163,7 +164,30 @@ if __name__ == '__main__':
 
     ll_df = get_leaders_laggards(con,plu_df)
 
-    ll_df.to_excel(r"C:\Users\uvdsa\Documents\Trading\Scripts\plurality-output.xlsx", index=False)
+    path_str = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Plurality\Plurality1"
+
+    if len(str(run_date2.month)) == 1:
+        mth_str = "0" + str(run_date2.month)
+    else:
+        mth_str = str(run_date2.month)
+
+    if len(str(run_date2.day)) == 1:
+        day_str = "0" + str(run_date2.day)
+    else:
+        day_str = str(run_date2.day)
+
+    dir_str = "D" + str(run_date2.year) + mth_str + day_str
+
+    pth = os.path.join(path_str, dir_str)
+
+
+    if not os.path.exists(pth):
+        os.mkdir(pth)
+
+    file_path = os.path.join(pth,"plurality-output.xlsx")
+
+
+    ll_df.to_excel(file_path, index=False)
 
     con.close()
 

@@ -1,11 +1,12 @@
-#This script is create the plurality output and upload it in to the table and excel
-#V2 - Inaddition to plurality flags for industry groups, we calculate C80, C90, C10, C20, TC, AvgRS
+# This script is create the plurality output and upload it in to the table and excel
+# V2 - Inaddition to plurality flags for industry groups, we calculate C80, C90, C10, C20, TC, AvgRS
 
 import pandas as pd
 import psycopg2
 from io import StringIO
 import datetime
 import sys
+
 
 def connect(params_dic):
     """ Connect to the PostgreSQL database server """
@@ -20,14 +21,14 @@ def connect(params_dic):
     return conn
 
 
-def get_rs_ig(conn,dte):
+def get_rs_ig(conn, dte):
     cursor = conn.cursor()
     postgreSQL_select_Query = "select * from rs_industry_groups where date = %s"
     cursor.execute(postgreSQL_select_Query, (dte,))
     rs_ind_records = cursor.fetchall()
 
     rs_df = pd.DataFrame(rs_ind_records,
-                      columns=['date','industry', 'ticker', 'rs1', 'rs2', 'rs3', 'rs4', 'rs'])
+                         columns=['date', 'industry', 'ticker', 'rs1', 'rs2', 'rs3', 'rs4', 'rs'])
 
     return rs_df
 
@@ -48,6 +49,7 @@ def check_flag(tmp_df, prop, thres, dir):
     else:
         return "N"
 
+
 def update_plurality_df(ind_groups, rss_df, fin_df):
     tmp_df = pd.DataFrame()
     for group in ind_groups:
@@ -67,12 +69,11 @@ def update_plurality_df(ind_groups, rss_df, fin_df):
         c20 = len(tmp_df.loc[tmp_df['rs'] <= 20].index)
         totC = tmp_df.shape[0]
 
-
         fin_df.loc[fin_df['industry'] == group, 'p5090'] = p5090_f
         fin_df.loc[fin_df['industry'] == group, 'p4080'] = p4080_f
         fin_df.loc[fin_df['industry'] == group, 'p5010'] = p5010_f
         fin_df.loc[fin_df['industry'] == group, 'p4020'] = p4020_f
-        fin_df.loc[fin_df['industry'] == group, 'AvgRS'] = round(AvgRS,2)
+        fin_df.loc[fin_df['industry'] == group, 'AvgRS'] = round(AvgRS, 2)
         fin_df.loc[fin_df['industry'] == group, 'c80'] = c80
         fin_df.loc[fin_df['industry'] == group, 'c90'] = c90
         fin_df.loc[fin_df['industry'] == group, 'c10'] = c10
@@ -83,8 +84,8 @@ def update_plurality_df(ind_groups, rss_df, fin_df):
         fin_df.loc[fin_df['industry'] == group, 'c30'] = c30
         fin_df.loc[fin_df['industry'] == group, 'totC'] = totC
 
-
     return fin_df
+
 
 def update_ind_groups_plurality(conn, dff, table):
     """
@@ -111,11 +112,7 @@ def update_ind_groups_plurality(conn, dff, table):
     cursor.close()
 
 
-
-
-
 if __name__ == '__main__':
-
     param_dic = {
         "host": "localhost",
         "database": "Plurality",
@@ -125,11 +122,11 @@ if __name__ == '__main__':
 
     con = connect(param_dic)
     dateTimeObj = datetime.datetime.now()
-    run_date = dateTimeObj - datetime.timedelta(days=3)
+    run_date = dateTimeObj - datetime.timedelta(days=0)
     run_date = run_date.strftime("%Y-%m-%d")
     print(run_date)
 
-    rss_df = get_rs_ig(con,run_date)
+    rss_df = get_rs_ig(con, run_date)
     ind_groups = list(rss_df.industry.unique())
 
     fin_df = pd.DataFrame()
@@ -138,16 +135,12 @@ if __name__ == '__main__':
 
     fin_df = update_plurality_df(ind_groups, rss_df, fin_df)
 
-    fin_df = fin_df[['date','industry','p5090', 'p4080', 'p5010', 'p4020', 'c80','c90','c10','c20','totC','AvgRS','c65','c70','c35','c30']]
+    fin_df = fin_df[
+        ['date', 'industry', 'p5090', 'p4080', 'p5010', 'p4020', 'c80', 'c90', 'c10', 'c20', 'totC', 'AvgRS', 'c65',
+         'c70', 'c35', 'c30']]
 
+    update_ind_groups_plurality(con, fin_df, "rs_industry_groups_plurality")
 
-    update_ind_groups_plurality(con,fin_df,"rs_industry_groups_plurality")
+    update_ind_groups_plurality(con, fin_df, "rs_industry_groups_plurality_history")
 
     con.close()
-
-
-
-
-
-
-

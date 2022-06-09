@@ -5,6 +5,7 @@ import psycopg2
 import datetime
 from dateutil.relativedelta import relativedelta
 from io import StringIO
+import sys
 
 
 def connect(params_dic):
@@ -31,7 +32,7 @@ def get_tickers(conn):
     return df
 
 
-def get_rs_ticker(conn,tkr_list,dat):
+def get_rs_ticker(cl_df,tkr_list,dat):
     rs_dict ={}
     excp =[]
     count = 0
@@ -40,7 +41,8 @@ def get_rs_ticker(conn,tkr_list,dat):
     for ticker in tkr_list:
         count = count + 1
         print("calculating RS for ticker %s %s/%s" % (ticker, count,  tot))
-        df=get_close_ticker(conn, ticker)
+        df=cl_df.loc[cl_df['ticker'] == ticker]
+        #df= df.sort_values(by='date', ascending=False, inplace=True)
         if len(df.index) == 0:
             rs_dict[ticker]=[None, None, None, None, None]
             excp.append(ticker)
@@ -61,18 +63,34 @@ def get_rs_ticker(conn,tkr_list,dat):
     return rs_dict
 
 
+def get_rs_ticker_old(conn,tkr_list,dat):
+    rs_dict ={}
+    excp =[]
+    count = 0
+    tot = len(tkr_list)
 
-def get_close_ticker(connn, ticker):
-    cursor = connn.cursor()
-    postgreSQL_select_Query = """select ticker, timestamp, close from usstockseod u where u.ticker = %s order by timestamp desc;"""
-    cursor.execute(postgreSQL_select_Query, [ticker, ])
-    close_prices = cursor.fetchall()
-    c_f = pd.DataFrame(close_prices, columns=['ticker', 'timestamp', 'close'])
-    c_f['date'] = pd.to_datetime(c_f['timestamp'])
-    c_f['date'] = c_f['date'].dt.strftime('%Y-%m-%d')
-    c_f.sort_values(by='date', ascending=False, inplace=True)
+    for ticker in tkr_list:
+        count = count + 1
+        print("calculating RS for ticker %s %s/%s" % (ticker, count,  tot))
+        df=get_close_ticker_old(conn, ticker)
+        if len(df.index) == 0:
+            rs_dict[ticker]=[None, None, None, None, None]
+            excp.append(ticker)
+        else:
+            RS1 = calculate_RS(df, dat, 3)
+            RS2 = calculate_RS(df, dat, 6)
+            RS3 = calculate_RS(df, dat, 9)
+            RS4 = calculate_RS(df, dat, 12)
+            if (RS1 == None or RS2==None or RS3==None or RS4==None):
+                RS=None
+                excp.append(ticker)
+            else:
+                RS = round(0.4*RS1+0.2*RS2+0.2*RS3+0.2*RS4,0)
+            rs_dict[ticker]=[RS1,RS2,RS3,RS4,RS]
 
-    return c_f
+    print(excp)
+
+    return rs_dict
 
 
 def calculate_RS(ddf,edate,m):
@@ -94,6 +112,31 @@ def calculate_RS(ddf,edate,m):
             RS = round(((close_price.iloc[0] - lowest_price) / (highest_price - lowest_price)) * 100, 0)
             return RS
 
+
+
+def get_close_ticker_all(connn):
+    cursor = connn.cursor()
+    postgreSQL_select_Query = """select ticker, timestamp, close from usstockseod_sincemay2021_view """
+    cursor.execute(postgreSQL_select_Query)
+    close_prices = cursor.fetchall()
+    c_f = pd.DataFrame(close_prices, columns=['ticker', 'timestamp', 'close'])
+    c_f['date'] = pd.to_datetime(c_f['timestamp'])
+    c_f['date'] = c_f['date'].dt.strftime('%Y-%m-%d')
+
+    return c_f
+
+
+def get_close_ticker_old(connn, ticker):
+    cursor = connn.cursor()
+    postgreSQL_select_Query = """select ticker, timestamp, close from usstockseod u where u.ticker = %s order by timestamp desc limit 400"""
+    cursor.execute(postgreSQL_select_Query, [ticker, ])
+    close_prices = cursor.fetchall()
+    c_f = pd.DataFrame(close_prices, columns=['ticker', 'timestamp', 'close'])
+    c_f['date'] = pd.to_datetime(c_f['timestamp'])
+    c_f['date'] = c_f['date'].dt.strftime('%Y-%m-%d')
+    c_f.sort_values(by='date', ascending=False, inplace=True)
+
+    return c_f
 
 
 def update_RS(ddf,RS_dict,dateee,conn):
@@ -157,16 +200,17 @@ if __name__ == '__main__':
     dateTimeObj = datetime.datetime.now()
     datee= dateTimeObj-datetime.timedelta(days=0)
 
-
     ticker_list = list(df.ticker.unique())
+    df_close = get_close_ticker_all(con)
 
-    rs_dict=get_rs_ticker(con,ticker_list,datee)
+    rs_dict=get_rs_ticker(df_close,ticker_list,datee)
 
     rs_d=update_RS(df,rs_dict,datee,con)
 
     rs_d = rs_d[["date","industry","ticker","RS1","RS2","RS3","RS4","RS"]]
 
     update_ind_groups(con,rs_d,"rs_industry_groups")
+    update_ind_groups(con, rs_d, "rs_industry_groups_history")
 
     con.close()
 

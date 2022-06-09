@@ -60,43 +60,6 @@ def get_rs_dates(conn):
 
 
 
-def update_plurality_df(ind_groups, rss_df, fin_df):
-    tmp_df = pd.DataFrame()
-    for group in ind_groups:
-        tmp_df = rss_df.loc[rss_df['industry'] == group]
-        p5090_f = check_flag(tmp_df, 50, 90, "long")
-        p4080_f = check_flag(tmp_df, 40, 80, "long")
-        p5010_f = check_flag(tmp_df, 50, 10, "short")
-        p4020_f = check_flag(tmp_df, 40, 20, "short")
-        AvgRS = tmp_df['rs'].mean()
-        c65 = len(tmp_df.loc[tmp_df['rs'] >= 65].index)
-        c70 = len(tmp_df.loc[tmp_df['rs'] >= 70].index)
-        c80 = len(tmp_df.loc[tmp_df['rs'] >= 80].index)
-        c90 = len(tmp_df.loc[tmp_df['rs'] >= 90].index)
-        c35 = len(tmp_df.loc[tmp_df['rs'] <= 35].index)
-        c30 = len(tmp_df.loc[tmp_df['rs'] <= 30].index)
-        c10 = len(tmp_df.loc[tmp_df['rs'] <= 10].index)
-        c20 = len(tmp_df.loc[tmp_df['rs'] <= 20].index)
-        totC = tmp_df.shape[0]
-
-
-        fin_df.loc[fin_df['industry'] == group, 'p5090'] = p5090_f
-        fin_df.loc[fin_df['industry'] == group, 'p4080'] = p4080_f
-        fin_df.loc[fin_df['industry'] == group, 'p5010'] = p5010_f
-        fin_df.loc[fin_df['industry'] == group, 'p4020'] = p4020_f
-        fin_df.loc[fin_df['industry'] == group, 'AvgRS'] = round(AvgRS,2)
-        fin_df.loc[fin_df['industry'] == group, 'c80'] = c80
-        fin_df.loc[fin_df['industry'] == group, 'c90'] = c90
-        fin_df.loc[fin_df['industry'] == group, 'c10'] = c10
-        fin_df.loc[fin_df['industry'] == group, 'c20'] = c20
-        fin_df.loc[fin_df['industry'] == group, 'c65'] = c65
-        fin_df.loc[fin_df['industry'] == group, 'c70'] = c70
-        fin_df.loc[fin_df['industry'] == group, 'c35'] = c35
-        fin_df.loc[fin_df['industry'] == group, 'c30'] = c30
-        fin_df.loc[fin_df['industry'] == group, 'totC'] = totC
-
-
-    return fin_df
 
 def check_flag(tmp_df, prop, thres, dir):
     tot = len(tmp_df.index)
@@ -149,13 +112,57 @@ def update_historical_plurality(rss_df,date_str,ind_groups):
         tmp_df['industry'] = ind_groups
         tmp_df['date'] = pd.Series([dte for x in range(len(tmp_df.index))])
 
-        tmp_df = update_plurality_df(ind_groups, rss_df, tmp_df)
+        tmp_df = update_plurality_df(ind_groups, rss_df, tmp_df,dte)
         tmp_df = tmp_df[
             ['date', 'industry', 'p5090', 'p4080', 'p5010', 'p4020', 'c80', 'c90', 'c10', 'c20', 'totC', 'AvgRS', 'c65',
              'c70', 'c35', 'c30']]
         big_df = pd.concat([big_df,tmp_df])
 
     return big_df
+
+
+def update_plurality_df(ind_groups, rss_df, fin_df,dte):
+
+    for group in ind_groups:
+        tmp_df = rss_df.loc[(rss_df['industry'] == group) & (rss_df['date'] == dte)]
+        if len(tmp_df.index) == 0:
+            print(group)
+            print(dte)
+            continue
+        p5090_f = check_flag(tmp_df, 50, 90, "long")
+        p4080_f = check_flag(tmp_df, 40, 80, "long")
+        p5010_f = check_flag(tmp_df, 50, 10, "short")
+        p4020_f = check_flag(tmp_df, 40, 20, "short")
+        AvgRS = tmp_df['rs'].mean()
+        c65 = len(tmp_df.loc[tmp_df['rs'] >= 65].index)
+        c70 = len(tmp_df.loc[tmp_df['rs'] >= 70].index)
+        c80 = len(tmp_df.loc[tmp_df['rs'] >= 80].index)
+        c90 = len(tmp_df.loc[tmp_df['rs'] >= 90].index)
+        c35 = len(tmp_df.loc[tmp_df['rs'] <= 35].index)
+        c30 = len(tmp_df.loc[tmp_df['rs'] <= 30].index)
+        c10 = len(tmp_df.loc[tmp_df['rs'] <= 10].index)
+        c20 = len(tmp_df.loc[tmp_df['rs'] <= 20].index)
+        totC = tmp_df.shape[0]
+
+
+        fin_df.loc[fin_df['industry'] == group, 'p5090'] = p5090_f
+        fin_df.loc[fin_df['industry'] == group, 'p4080'] = p4080_f
+        fin_df.loc[fin_df['industry'] == group, 'p5010'] = p5010_f
+        fin_df.loc[fin_df['industry'] == group, 'p4020'] = p4020_f
+        fin_df.loc[fin_df['industry'] == group, 'AvgRS'] = round(AvgRS,2)
+        fin_df.loc[fin_df['industry'] == group, 'c80'] = c80
+        fin_df.loc[fin_df['industry'] == group, 'c90'] = c90
+        fin_df.loc[fin_df['industry'] == group, 'c10'] = c10
+        fin_df.loc[fin_df['industry'] == group, 'c20'] = c20
+        fin_df.loc[fin_df['industry'] == group, 'c65'] = c65
+        fin_df.loc[fin_df['industry'] == group, 'c70'] = c70
+        fin_df.loc[fin_df['industry'] == group, 'c35'] = c35
+        fin_df.loc[fin_df['industry'] == group, 'c30'] = c30
+        fin_df.loc[fin_df['industry'] == group, 'totC'] = totC
+
+
+    return fin_df
+
 
 
 

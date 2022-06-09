@@ -1,5 +1,6 @@
 # This script creates sector and groups tables with top market cap stocks
 import psycopg2
+import sys
 
 def connect(params_dic):
     """ Connect to the PostgreSQL database server """

@@ -1,14 +1,12 @@
 # This script is upload net new eod data for all stocks to DB
 import pandas as pd
 import psycopg2
-import sqlalchemy
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, Date, BigInteger, Float, DateTime
-from sqlalchemy import create_engine
 from io import StringIO
 import datetime
 import sys
 import socket
+import iqfeedTest as iq
+
 
 def connect(params_dic):
     """ Connect to the PostgreSQL database server """
@@ -22,6 +20,7 @@ def connect(params_dic):
     print("Connection successful")
     return conn
 
+
 def get_rs_tickers(conn):
     cursor = conn.cursor()
     postgreSQL_select_Query = "select ticker from industry_groups"
@@ -33,6 +32,7 @@ def get_rs_tickers(conn):
     RS_list = tuple(df.ticker.unique())
     return RS_list
 
+
 def get_dates_onlyRS_tickers(conn, rss_list):
     cursor = conn.cursor()
     postgreSQL_select_Query = "select ticker, timestamp from usstockseod where ticker in %s" % (rss_list,)
@@ -42,8 +42,8 @@ def get_dates_onlyRS_tickers(conn, rss_list):
     df = pd.DataFrame(stock_records,
                       columns=['ticker', 'timestamp'])
     t_list = list(df.ticker.unique())
-    count=0
-    dct_dates ={}
+    count = 0
+    dct_dates = {}
     total = len(t_list)
     print(total)
 
@@ -70,8 +70,8 @@ def get_dates_missed_tickers(conn, miss_list):
     df = pd.DataFrame(stock_records,
                       columns=['ticker', 'timestamp'])
     t_list = list(df.ticker.unique())
-    count=0
-    dct_dates ={}
+    count = 0
+    dct_dates = {}
     total = len(t_list)
     print(total)
 
@@ -98,8 +98,8 @@ def get_dates_tickers(conn):
     df = pd.DataFrame(stock_records,
                       columns=['ticker', 'timestamp'])
     t_list = list(df.ticker.unique())
-    count=0
-    dct_dates ={}
+    count = 0
+    dct_dates = {}
     total = len(t_list)
     print(total)
 
@@ -174,6 +174,7 @@ def get_historical_data(dct_tickers):
 
     return fdf
 
+
 def read_historical_data_socket(sock, recv_buffer=4096):
     """
     Read the information from the socket, in a buffered
@@ -194,6 +195,7 @@ def read_historical_data_socket(sock, recv_buffer=4096):
     # Remove the end message string
     buffer = buffer[:-12]
     return buffer
+
 
 def copy_from_stringio(conn, dff, table):
     """
@@ -233,21 +235,20 @@ if __name__ == '__main__':
 
     con = connect(param_dic)
 
-    mis_list = ('SPUC', 'LFMD')
-    date_tickers = get_dates_missed_tickers(con, mis_list)
 
-    #rs_list = get_rs_tickers(con)
-    #date_tickers = get_dates_onlyRS_tickers(con,rs_list)
+
+    #mis_list = ('IR', 'VTRS', 'FTI', 'YUMC', 'CWCO', 'SNX', 'PRIM', 'CENTA')
+    #date_tickers = get_dates_missed_tickers(con, mis_list)
+
+    rs_list = get_rs_tickers(con)
+    date_tickers = get_dates_onlyRS_tickers(con, rs_list)
 
     #date_tickers = get_dates_tickers(con)
 
+    iq.launch_service()
 
     up_df = get_historical_data(date_tickers)
 
     copy_from_stringio(con, up_df, "usstockseod")
 
     con.close()
-
-
-
-

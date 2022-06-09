@@ -2,14 +2,9 @@
 
 import pandas as pd
 import psycopg2
-import sqlalchemy
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, Date, BigInteger, Float, DateTime
-from sqlalchemy import create_engine
 from io import StringIO
-import datetime
 import sys
-import socket
+
 
 def connect(params_dic):
     """ Connect to the PostgreSQL database server """
