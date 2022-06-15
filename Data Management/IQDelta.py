@@ -237,7 +237,7 @@ if __name__ == '__main__':
 
 
 
-    #mis_list = ('IR', 'VTRS', 'FTI', 'YUMC', 'CWCO', 'SNX', 'PRIM', 'CENTA')
+    #mis_list = ('LQDB', 'PSQ', 'SIZE', 'SPHB', 'VAMO', 'VRAI', 'HLNE', 'OCCI', 'GUT', 'JHAA', 'RMCF', 'MPAY', 'AEG', 'ELSE', 'SALM', 'ARDS', 'CHRS', 'GOSS', 'MDNA', 'NNVC', 'RNAZ', 'SLGL', 'TCRR', 'EKSO', 'CLMT', 'CVI', 'FLMN', 'SSTK', 'SYTA', 'VWTR', 'CNXN', 'CAC', 'CBNK', 'PACW', 'CCU', 'LGIH', 'BOX', 'WLFC', 'ATVI', 'NH', 'SGFY', 'UEIC', 'HLF', 'KTCC', 'DILA', 'GAPA', 'BJK', 'EFAD', 'FTDS', 'GMF', 'IJT')
     #date_tickers = get_dates_missed_tickers(con, mis_list)
 
     rs_list = get_rs_tickers(con)

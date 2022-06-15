@@ -141,7 +141,7 @@ if __name__ == '__main__':
 
     con = connect(param_dic)
     dateTimeObj = datetime.datetime.now()
-    datee = dateTimeObj - datetime.timedelta(days=0)
+    datee = dateTimeObj - datetime.timedelta(days=1)
     print("first date %s" % datee)
 
     df = get_plot_data(con,datee)

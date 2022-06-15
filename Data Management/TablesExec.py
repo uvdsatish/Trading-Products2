@@ -18,42 +18,6 @@ def connect(params_dic):
 
 def create_tables(conn):
     commands = (
-        """
-        DROP TABLE IF EXISTS rs_sectors;
-        """
-       """
-        DROP TABLE IF EXISTS rs_sectors_plurality;
-        """ 
-        """
-        CREATE TABLE rs_sectors (
-            date DATE NOT NULL,
-            sector VARCHAR(255),
-            ticker VARCHAR(255),
-            RS1 FLOAT,
-            RS2 FLOAT,
-            RS3 FLOAT,
-            RS4 FLOAT,
-            RS FLOAT,
-            PRIMARY KEY (date, sector, ticker)
-            )          
-        """,
-        """
-        CREATE TABLE rs_sectors_plurality(
-            date DATE NOT NULL,
-            sector VARCHAR(255),
-            P5090 VARCHAR DEFAULT 'N',
-            P4080 VARCHAR DEFAULT 'N',
-            P5010 VARCHAR DEFAULT 'N',
-            P4020 VARCHAR DEFAULT 'N',
-            c80 FLOAT,
-            c90 FLOAT,
-            c10 FLOAT,
-            c20 FLOAT,
-            totC FLOAT,
-            AvgRS FLOAT,
-            PRIMARY KEY (date, sector) 
-            )         
-               """
     )
 
     try:

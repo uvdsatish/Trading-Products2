@@ -111,6 +111,33 @@ def update_ind_groups_plurality(conn, dff, table):
     print("copy_from_stringio() done")
     cursor.close()
 
+def get_counts(rs_df,run_date):
+    p5090 = get_plurality_filters(rs_df, "p5090")
+
+    p4080 = rs_df.loc[rs_df['p4080'] == "Y"]
+    p4080 = p4080.loc[p4080['p5090'] != "Y", "industry"]
+
+    p5010 = get_plurality_filters(rs_df, "p5010")
+
+    p4020 = rs_df.loc[rs_df['p4020'] == "Y"]
+    p4020 = p4020.loc[p4020['p5010'] != "Y", "industry"]
+
+    dct = {}
+    dct['date'] = run_date
+    dct['p5090c'] = len(p5090.index)
+    dct['p4080c'] = len(p4080.index)
+    dct['p5010c'] = len(p5010.index)
+    dct['p4020c'] = len(p4020.index)
+    dct['longTot'] = dct['p5090c'] + dct['p4080c']
+    dct['shortTot'] = dct['p5010c'] + dct['p4020c']
+
+    return dct
+
+def get_plurality_filters(rs_df,plu_flag):
+    plu_S = rs_df.loc[rs_df[plu_flag]=="Y",'industry']
+    return pd.Series(plu_S)
+
+
 
 if __name__ == '__main__':
     param_dic = {
@@ -122,8 +149,8 @@ if __name__ == '__main__':
 
     con = connect(param_dic)
     dateTimeObj = datetime.datetime.now()
-    run_date = dateTimeObj - datetime.timedelta(days=0)
-    run_date = run_date.strftime("%Y-%m-%d")
+    run_date1 = dateTimeObj - datetime.timedelta(days=0)
+    run_date = run_date1.strftime("%Y-%m-%d")
     print(run_date)
 
     rss_df = get_rs_ig(con, run_date)
@@ -142,5 +169,11 @@ if __name__ == '__main__':
     update_ind_groups_plurality(con, fin_df, "rs_industry_groups_plurality")
 
     update_ind_groups_plurality(con, fin_df, "rs_industry_groups_plurality_history")
+
+    cl_dct = get_counts(fin_df,run_date1)
+    cl_dct = {k: [v] for k, v in cl_dct.items()}
+    cl_df = pd.DataFrame.from_dict(cl_dct)
+
+    update_ind_groups_plurality(con, cl_df, "rs_plurality_count_historical")
 
     con.close()

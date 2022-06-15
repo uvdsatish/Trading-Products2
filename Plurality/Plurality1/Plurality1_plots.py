@@ -35,8 +35,18 @@ def get_plot_data(conn, date):
 
     p_f.sort_values(by='date', ascending=False, inplace=True)
 
+    return p_f
+
+def get_count_data(conn,date):
+    cursor = conn.cursor()
+    postgreSQL_select_Query = """select * from rs_plurality_count_historical where date <= %s"""
+    cursor.execute(postgreSQL_select_Query, [date, ])
+    plot_data = cursor.fetchall()
+    p_f = pd.DataFrame(plot_data, columns=['date', 'p5090c', 'p4080c', 'p5010c', 'p4020c', 'longtot', 'shorttot'])
+    p_f.sort_values(by='date', inplace=True)
 
     return p_f
+
 
 def get_lists(excl_file):
     plu_dct ={}
@@ -50,8 +60,9 @@ def get_lists(excl_file):
 
     return plu_dct
 
-def store_plots(lists_dct,pl_df,dte,pth):
+def store_plots(lists_dct,pl_df,c_df,dte,pth):
     make_directories(pth,dte)
+    plot_count(c_df,dte,pth)
     for key,value in lists_dct.items():
         print("storing the plots for %s" % key)
         if key == 'top_long':
@@ -117,6 +128,42 @@ def plot_store_rs(tmp_df,dte,pth,dir,cat,v):
 
     return
 
+def plot_count(tmp_df,dte,pth):
+
+    dte = dte - datetime.timedelta(days=1)
+
+    if len(str(dte.month)) == 1:
+        mth_str = "0"+str(dte.month)
+    else:
+        mth_str = str(dte.month)
+
+    if len(str(dte.day)) == 1:
+        day_str = "0"+str(dte.day)
+    else:
+        day_str = str(dte.day)
+
+
+    dir_str = "D" + str(dte.year) + mth_str + day_str
+
+    title ="Plurality_count plot"
+
+
+    file_path = os.path.join(pth, dir_str,"pl_count.jpg")
+
+    tmp_df = tmp_df[['date', 'longtot', 'shorttot']]
+
+    sns_plot = sns.relplot('date', 'value', hue='variable', data=pd.melt(tmp_df, 'date'), kind='line', height=10,
+                           aspect=2.4, palette="cool")
+    sns_plot.fig.subplots_adjust(top=.9)
+    sns_plot.fig.suptitle(title)
+
+
+    sns_plot.figure.savefig(file_path)
+
+    plt.clf()
+
+    return
+
 
 def make_directories(pth,dte):
     dte = dte - datetime.timedelta(days=1)
@@ -163,14 +210,6 @@ def make_directories(pth,dte):
         os.mkdir(pthD)
 
 
-
-
-
-
-
-
-
-
 if __name__ == '__main__':
 
     param_dic = {
@@ -208,7 +247,11 @@ if __name__ == '__main__':
     df = get_plot_data(con,date1)
     lists_dct = get_lists(plu_excel)
 
-    store_plots(lists_dct,df,date1,pth)
+    c_df = get_count_data(con, date1)
+
+    cl_df = c_df[['date','p5090c','p5010c','longtot','shorttot']]
+
+    store_plots(lists_dct,df,cl_df,date1,pth)
 
 
     con.close()
