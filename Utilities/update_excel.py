@@ -1,5 +1,6 @@
 # This writes dataframe with plurality data to excel based on date
 
+
 import pandas as pd
 import psycopg2
 import datetime

@@ -1,4 +1,4 @@
-# This script is upload net new eod data for all stocks to DB
+# This script is upload net new eod data for all stocks, specific stocks, top 10 stocks per industry group to DB
 import pandas as pd
 import psycopg2
 from io import StringIO
@@ -6,6 +6,7 @@ import datetime
 import sys
 import socket
 import iqfeedTest as iq
+import time
 
 
 def connect(params_dic):
@@ -35,86 +36,94 @@ def get_rs_tickers(conn):
 
 def get_dates_onlyRS_tickers(conn, rss_list):
     cursor = conn.cursor()
-    postgreSQL_select_Query = "select ticker, timestamp from usstockseod where ticker in %s" % (rss_list,)
+    postgreSQL_select_Query = "select ticker, last_timestamp from max_date_price_view where ticker in %s" % (rss_list,)
     cursor.execute(postgreSQL_select_Query)
     stock_records = cursor.fetchall()
 
     df = pd.DataFrame(stock_records,
-                      columns=['ticker', 'timestamp'])
-    t_list = list(df.ticker.unique())
-    count = 0
-    dct_dates = {}
-    total = len(t_list)
-    print(total)
+                      columns=['ticker', 'last_timestamp'])
 
-    for ticker in t_list:
-        count = count + 1
-        print(count)
-        t_df = df.loc[df['ticker'] == ticker]
-        dct_dates[ticker] = t_df['timestamp'].max() + datetime.timedelta(days=1)
+    # increment timestamp by 1 day
+    df['next_timestamp'] = df['last_timestamp'] + datetime.timedelta(days=1)
 
-    for sym, dte in dct_dates.items():
-        dct_dates[sym] = pd.Timestamp(dct_dates[sym])
-        dct_dates[sym] = dct_dates[sym].to_pydatetime()
-        dct_dates[sym] = dct_dates[sym].strftime("%Y%m%d")
+    # convert the timestamp to date string
+    df['next_timestamp_dt'] = pd.to_datetime(df['next_timestamp'])
+    df['next_timestamp_date'] = df['next_timestamp_dt'].dt.strftime('%Y%m%d')
 
-    return dct_dates
+    df.drop(['last_timestamp', 'next_timestamp', 'next_timestamp_dt'], axis=1, inplace=True)
 
 
-def get_dates_missed_tickers(conn, miss_list):
+    return df
+
+def get_all_tickers_defaultDates(conn):
+
     cursor = conn.cursor()
-    postgreSQL_select_Query = "select ticker, timestamp from usstockseod where ticker in %s" % (miss_list,)
+    postgreSQL_select_Query = "select ticker from all_tickers"
     cursor.execute(postgreSQL_select_Query)
     stock_records = cursor.fetchall()
 
     df = pd.DataFrame(stock_records,
-                      columns=['ticker', 'timestamp'])
-    t_list = list(df.ticker.unique())
-    count = 0
-    dct_dates = {}
-    total = len(t_list)
-    print(total)
+                      columns=['ticker'])
 
-    for ticker in t_list:
-        count = count + 1
-        print(count)
-        t_df = df.loc[df['ticker'] == ticker]
-        dct_dates[ticker] = t_df['timestamp'].max() + datetime.timedelta(days=1)
+    df['def_date'] = pd.Timestamp('1950-01-01')
+    df['date'] = df['def_date'].dt.strftime('%Y%m%d')
 
-    for sym, dte in dct_dates.items():
-        dct_dates[sym] = pd.Timestamp(dct_dates[sym])
-        dct_dates[sym] = dct_dates[sym].to_pydatetime()
-        dct_dates[sym] = dct_dates[sym].strftime("%Y%m%d")
-
-    return dct_dates
+    df.drop(['def_date'], axis=1, inplace=True)
 
 
-def get_dates_tickers(conn):
+    return df
+
+
+def get_dates_all_tickers(conn):
     cursor = conn.cursor()
-    postgreSQL_select_Query = "select ticker, timestamp from usstockseod"
+    postgreSQL_select_Query = "select ticker, last_timestamp from max_date_price_view"
     cursor.execute(postgreSQL_select_Query)
     stock_records = cursor.fetchall()
 
     df = pd.DataFrame(stock_records,
-                      columns=['ticker', 'timestamp'])
-    t_list = list(df.ticker.unique())
-    count = 0
-    dct_dates = {}
-    total = len(t_list)
-    print(total)
+                      columns=['ticker', 'last_timestamp'])
+    # increment timestamp by 1 day
+    df['next_timestamp'] = df['last_timestamp'] + datetime.timedelta(days=1)
 
-    for ticker in t_list:
-        count = count + 1
-        print(count)
-        t_df = df.loc[df['ticker'] == ticker]
-        dct_dates[ticker] = t_df['timestamp'].max() + datetime.timedelta(days=1)
+    # convert the timestamp to date string
+    df['next_timestamp_dt'] = pd.to_datetime(df['next_timestamp'])
+    df['next_timestamp_date'] = df['next_timestamp_dt'].dt.strftime('%Y%m%d')
 
-    for sym, dte in dct_dates.items():
-        dct_dates[sym] = pd.Timestamp(dct_dates[sym])
-        dct_dates[sym] = dct_dates[sym].to_pydatetime()
-        dct_dates[sym] = dct_dates[sym].strftime("%Y%m%d")
+    df.drop(['last_timestamp', 'next_timestamp', 'next_timestamp_dt'], axis=1, inplace=True)
 
-    return dct_dates
+
+    return df
+
+def update_date_tickers_all(def_df,df):
+    #merge data frames,overriding overlaps
+
+    merged_df = pd.merge(def_df,df,on='ticker', how='outer')
+
+    merged_df['next_timestamp_date'] = merged_df['next_timestamp_date'].fillna(merged_df['date'])
+
+    merged_df.drop(['date'], axis=1, inplace=True)
+
+    merged_df = merged_df.drop(index=0)
+
+    merged_dates = merged_df.set_index('ticker')['next_timestamp_date'].to_dict()
+
+    return merged_dates
+
+
+def update_date_tickers_some(def_df,df):
+    #merge data frames,overriding overlaps
+
+    merged_df = pd.merge(def_df,df,on='ticker', how = "inner")
+
+    merged_df['next_timestamp_date'] = merged_df['next_timestamp_date'].fillna(merged_df['date'])
+
+    merged_df.drop(['date'], axis=1, inplace=True)
+
+    merged_df = merged_df.drop(index=0)
+
+    merged_dates = merged_df.set_index('ticker')['next_timestamp_date'].to_dict()
+
+    return merged_dates
 
 
 def get_historical_data(dct_tickers):
@@ -125,7 +134,7 @@ def get_historical_data(dct_tickers):
     verr = []
 
     for sym, dte in dct_tickers.items():
-        print("Downloading symbol: %s..." % sym, count)
+        #print("Downloading symbol: %s..." % sym, count)
         count = count + 1
         # Construct the message needed by IQFeed to retrieve data
 
@@ -148,7 +157,7 @@ def get_historical_data(dct_tickers):
             continue
         # Remove all the endlines and line-ending
         # comma delimiter from each record
-        print(data)
+        #print(data)
         data = str(data)
         data = "".join(data.split("\r"))
         data = data.replace(",\n", "\n")[:-1]
@@ -172,8 +181,9 @@ def get_historical_data(dct_tickers):
     print("no connection so no value for these tickers")
     print(verr)
 
-    return fdf
+    print("done")
 
+    return fdf
 
 def read_historical_data_socket(sock, recv_buffer=4096):
     """
@@ -221,10 +231,19 @@ def copy_from_stringio(conn, dff, table):
     print("copy_from_stringio() done")
     cursor.close()
 
+def split_dict_into_chunks(dictionary, chunk_size):
+    items = list(dictionary.items())
+    chunks = [items[i:i + chunk_size] for i in range(0, len(items), chunk_size)]
+    return [dict(chunk) for chunk in chunks]
 
 if __name__ == '__main__':
+
+    # record start time
+    start = time.time()
+
     host = "127.0.0.1"  # Localhost
-    port = 9100  # Historical data socket port
+    port = 9100  # Historical data socket portHI Hi
+
 
     param_dic = {
         "host": "localhost",
@@ -235,20 +254,54 @@ if __name__ == '__main__':
 
     con = connect(param_dic)
 
+    # get the list of all tickers from postgres table all_tickers
+    date_tickers_default = get_all_tickers_defaultDates(con)
 
 
-    #mis_list = ('LQDB', 'PSQ', 'SIZE', 'SPHB', 'VAMO', 'VRAI', 'HLNE', 'OCCI', 'GUT', 'JHAA', 'RMCF', 'MPAY', 'AEG', 'ELSE', 'SALM', 'ARDS', 'CHRS', 'GOSS', 'MDNA', 'NNVC', 'RNAZ', 'SLGL', 'TCRR', 'EKSO', 'CLMT', 'CVI', 'FLMN', 'SSTK', 'SYTA', 'VWTR', 'CNXN', 'CAC', 'CBNK', 'PACW', 'CCU', 'LGIH', 'BOX', 'WLFC', 'ATVI', 'NH', 'SGFY', 'UEIC', 'HLF', 'KTCC', 'DILA', 'GAPA', 'BJK', 'EFAD', 'FTDS', 'GMF', 'IJT')
-    #date_tickers = get_dates_missed_tickers(con, mis_list)
 
-    rs_list = get_rs_tickers(con)
-    date_tickers = get_dates_onlyRS_tickers(con, rs_list)
+    # Changes begin here for three modes 1/only missing list 2/only RS list 3/all tickers
 
-    #date_tickers = get_dates_tickers(con)
+    #FIRST CHANGE
+    #MISSED TICKERS
+    #mis_list = ('AAPL','EIX')
+    #date_tickers = get_dates_onlyRS_tickers(con, mis_list)
+
+    # RS TICKERS
+    #rs_list = get_rs_tickers(con)
+    #date_tickers = get_dates_onlyRS_tickers(con, rs_list)
+
+    #DEFAULT MODE - ALL TICKERS
+    date_tickers = get_dates_all_tickers(con)
+
+    #SECOND CHANGE
+    #DEFAULT MODE - ALL TICKERS
+    final_date_tickers_all = update_date_tickers_all(date_tickers_default,date_tickers)
 
     iq.launch_service()
 
-    up_df = get_historical_data(date_tickers)
+    #FOR BOTH RS TICKERS AND MISSED TICKERS
+    #final_date_tickers_some = update_date_tickers_some(date_tickers_default,date_tickers)
 
-    copy_from_stringio(con, up_df, "usstockseod")
+    list_dict = split_dict_into_chunks(final_date_tickers_all, 500)
+    count=0
+    for i in list_dict:
+        count=count+1
+        print(count)
+        up_df = get_historical_data(i)
+        copy_from_stringio(con, up_df, "usstockseod")
+
+
+    #FOR MISSING LIST AND RS LIST, JUST BELOW ONE LINE IS ENOUGH AND COMMENT CHUNKS CODE AND LOOP CODE ABOVE
+    #up_df = get_historical_data(final_date_tickers_some)
 
     con.close()
+
+    # record end time
+    end = time.time()
+
+    # print the difference between start
+    # and end time in milli. secs
+    print("The time of execution of above program is :",
+          ((end - start) * 10 ** 3)/60000, "minutes")
+
+

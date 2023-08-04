@@ -162,8 +162,7 @@ if __name__ == '__main__':
 
     fin_df = update_plurality_df(ind_groups, rss_df, fin_df)
 
-    fin_df = fin_df[
-        ['date', 'industry', 'p5090', 'p4080', 'p5010', 'p4020', 'c80', 'c90', 'c10', 'c20', 'totC', 'AvgRS', 'c65',
+    fin_df = fin_df[['date', 'industry', 'p5090', 'p4080', 'p5010', 'p4020', 'c80', 'c90', 'c10', 'c20', 'totC', 'AvgRS', 'c65',
          'c70', 'c35', 'c30']]
 
     update_ind_groups_plurality(con, fin_df, "rs_industry_groups_plurality")

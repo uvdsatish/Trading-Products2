@@ -1,5 +1,5 @@
 
-""" This script is extract data from database to df and to excel"""
+""" This script is  to extract data from a database to df and to excel"""
 
 import psycopg2
 import pandas as pd

@@ -1,4 +1,4 @@
-# This script creates sector and groups tables with top market cap stocks- just GIT testing
+# This script creates sector and groups tables with top market cap stocks
 
 import pandas as pd
 import psycopg2
@@ -46,7 +46,7 @@ def get_sectors_data(sects,a_df):
     for s in sects:
         t_df = s_df.loc[s_df['sector'] == s]
         t_df = t_df.loc[t_df['volume']>=100]
-        s_tot_df = pd.concat([s_tot_df, t_df.head(20)])
+        s_tot_df = pd.concat([s_tot_df, t_df.head(20)])  # get top 20 by market cap for each sector
 
     return s_tot_df
 
@@ -61,7 +61,7 @@ def get_ig_data(grps, a_df):
     for g in grps:
         t_df = ig_df.loc[ig_df['industry'] == g]
         t_df = t_df.loc[t_df['volume']>=100]
-        ig_tot_df = pd.concat([ig_tot_df, t_df.head(10)])
+        ig_tot_df = pd.concat([ig_tot_df, t_df.head(10)]) # get top 10 by market cap for each industry
 
     return ig_tot_df
 

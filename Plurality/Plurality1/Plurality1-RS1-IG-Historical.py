@@ -6,6 +6,7 @@
 # for a date calculate the RS for all tickers
 # repeat for all dates and then add the dataframe to the table
 # what about IPOs, and missing tickers for certain dates?
+# Not sure if this script is being used?
 
 import pandas as pd
 import psycopg2
@@ -159,7 +160,7 @@ def update_ind_groups(conn, dff, table):
     print("copy_from_stringio() done")
     cursor.close()
 
-def get_trading_dates(ncd,md_df):
+def get_trading_dates(ncd,massive_df):
     delta_days_from_current_date = ncd
 
     end_date = datetime.datetime.now()

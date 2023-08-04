@@ -1,3 +1,4 @@
+# This script is to get fundamental data - doesn't seem to be working as is now
 import pandas as pd
 
 import pyiqfeed.pyiqfeed as iq
@@ -20,7 +21,7 @@ def launch_service():
     # svc.launch(headless=True)
 
 def get_daily_data_betweenDates(ticker: str, bgn_date: datetime.date, end_date:datetime.date):
-    """Historical Daily Data"""
+    # Historical Daily Data
     hist_conn = iq.HistoryConn(name="pyiqfeed-Example-daily-data")
     hist_listener = iq.VerboseIQFeedListener("History Bar Listener")
     hist_conn.add_listener(hist_listener)
@@ -57,8 +58,8 @@ if __name__ == '__main__':
 
     launch_service()
 
-    #df = get_daily_data_betweenDates("SPY",datetime.date(2022,1,1),datetime.date(2022,6,1))
+    df = get_daily_data_betweenDates("SPY",datetime.date(2022,1,1),datetime.date(2022,6,1))
 
-    df = get_fundamental_data(1,6,datetime.date(2022,6,1))
+    df = get_fundamental_data(1,6,datetime.date(2022,3,5))
 
     print(df)

@@ -1,4 +1,4 @@
-""" This script uploads main lookup all in to database - all tickers, groups, sectors, market cap"""
+""" This script uploads main lookup all in to database - all tickers, groups, sectors, market cap, may be this can be modified or used to update delta: compare two datasets, find the delta1 and delta2; delta1 marks inactive, delta2 inserts, and any thing that is not inactive is marked active"""
 import pandas as pd
 import psycopg2
 import sqlalchemy

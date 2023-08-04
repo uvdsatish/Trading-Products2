@@ -114,12 +114,12 @@ def plot_store_rs(tmp_df,dte,pth,dir,cat,v):
 
     file_path = os.path.join(pth, dir_str,dir,cat,v_str)
 
-    sns_plot=sns.relplot( data = tmp_df, x ='date', y ='avgrs', height=10, aspect=2.4, kind="line", palette="cool" )
+    sns_plot=sns.relplot( data = tmp_df, x ='date', y ='avgrs', height=10, aspect=2.4, kind="line",  )
     sns_plot.fig.subplots_adjust(top=.9)
     sns_plot.fig.suptitle(title)
 
-    plt.axhline(y=80, color='g',linestyle='dotted')
-    plt.axhline(y=20, color='r', linestyle='dotted')
+    plt.axhline(y=70, color='g',linestyle='dotted')
+    plt.axhline(y=30, color='r', linestyle='dotted')
 
 
     sns_plot.figure.savefig(file_path)
@@ -151,8 +151,9 @@ def plot_count(tmp_df,dte,pth):
     file_path = os.path.join(pth, dir_str,"pl_count.jpg")
 
     tmp_df = tmp_df[['date', 'longtot', 'shorttot']]
+    tmp_df=tmp_df.drop_duplicates(subset=['date'], keep='last')
 
-    sns_plot = sns.relplot('date', 'value', hue='variable', data=pd.melt(tmp_df, 'date'), kind='line', height=10,
+    sns_plot = sns.relplot(x='date',y= 'value', hue='variable', data=pd.melt(tmp_df, 'date'), kind='line', height=10,
                            aspect=2.4, palette="cool")
     sns_plot.fig.subplots_adjust(top=.9)
     sns_plot.fig.suptitle(title)
@@ -217,6 +218,7 @@ if __name__ == '__main__':
         "database": "Plurality",
         "user": "postgres",
         "password": "root"
+
     }
 
 
@@ -224,8 +226,9 @@ if __name__ == '__main__':
 
     con = connect(param_dic)
     dateTimeObj = datetime.datetime.now()
-    date1 = dateTimeObj - datetime.timedelta(days=-1)
-    datee = dateTimeObj - datetime.timedelta(days=0)
+    date1 = dateTimeObj - datetime.timedelta(days=-1) ## one less day
+    datee = dateTimeObj - datetime.timedelta(days=0) ##the day in focus
+
     print("first date %s" % datee)
 
     if len(str(datee.month)) == 1:

@@ -1,4 +1,4 @@
-# This script is used to get historical data for a list of symbols from iq feed and upload data from dataframe to DB
+# This script is used to get historical data for a list of symbols from iq feed and upload data from dataframe to DB; I am not sure this script is needed as IQ delta will cover it.
 import pandas as pd
 import socket
 import sys
@@ -184,7 +184,7 @@ if __name__ == '__main__':
     con = connect(param_dic)
 
     #list_tickers = get_tickers_list(con)
-    list_tickers =['EWBC','ZNGA','NTGR','NAD','MPAY', 'KMT', 'IQV', 'PRTY', 'UTME','EGLE']
+    #list_tickers =['EWBC','ZNGA','NTGR','NAD','MPAY', 'KMT', 'IQV', 'PRTY', 'UTME','EGLE']
     df = get_historical_data(list_tickers)
 
     copy_from_stringio(con, df, "usstockseod")

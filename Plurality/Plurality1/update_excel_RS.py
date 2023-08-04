@@ -4,6 +4,7 @@ import pandas as pd
 import psycopg2
 import datetime
 import os
+import sys
 
 def connect(params_dic):
     """ Connect to the PostgreSQL database server """
@@ -137,8 +138,44 @@ def get_laggards(conn,b_g):
     num_b = int(round(0.1*len(b_list),0))
     return b_list[0:num_b]
 
+def get_top_groups(rs_df):
+
+    top_df = rs_df.loc[(rs_df['totc'] >= 6) & (rs_df['avgrs'] >=80)]
+    top_df = top_df[['industry','totc','avgrs']]
+
+    return top_df
 
 
+def get_bottom_groups(rs_df):
+    bot_df = rs_df.loc[(rs_df['totc'] >= 6) & (rs_df['avgrs'] <= 20)]
+    bot_df = bot_df[['industry', 'totc', 'avgrs']]
+
+    return bot_df
+
+def merge_for_groupDf(top_df, bot_df ):
+    top_groups = list(top_df['industry'])
+    top_groups_count = list(top_df['totc'])
+    top_groups_avgRS = list(top_df['avgrs'])
+
+    bottom_groups = list(bot_df['industry'])
+    bottom_groups_count = list(bot_df['totc'])
+    bottom_groups_avgRS = list(bot_df['avgrs'])
+
+    tb_df = pd.DataFrame()
+
+    tb_df['topGroups'] = pd.Series(top_groups)
+    tb_df['topGroupCount'] = pd.Series(top_groups_count)
+    tb_df['topGroupAvgRS'] = pd.Series(top_groups_avgRS)
+
+    tb_df['BottomGroups'] = pd.Series(bottom_groups)
+    tb_df['BottomGroupCount'] = pd.Series(bottom_groups_count)
+    tb_df['BottomGroupAvgRS'] = pd.Series(bottom_groups_avgRS)
+
+    tb_df.fillna("", inplace=True)
+
+    tb_df = tb_df.reindex(columns=['topGroups', 'topGroupCount', 'topGroupAvgRS', 'BottomGroups', 'BottomGroupCount', 'BottomGroupAvgRS'])
+
+    return tb_df
 
 if __name__ == '__main__':
 
@@ -164,6 +201,14 @@ if __name__ == '__main__':
 
     ll_df = get_leaders_laggards(con,plu_df)
 
+    topGroups_df = get_top_groups(rss_df)
+    bottomGroups_df = get_bottom_groups(rss_df)
+
+    group_df = merge_for_groupDf(topGroups_df,bottomGroups_df)
+
+    final_df = pd.concat([ll_df,group_df], axis="columns")
+
+
     path_str = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Plurality\Plurality1"
 
     if len(str(run_date2.month)) == 1:
@@ -187,7 +232,7 @@ if __name__ == '__main__':
     file_path = os.path.join(pth,"plurality-output.xlsx")
 
 
-    ll_df.to_excel(file_path, index=False)
+    final_df.to_excel(file_path, index=False)
 
     con.close()
 

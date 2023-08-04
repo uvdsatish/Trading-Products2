@@ -1,4 +1,4 @@
-# This script creates sector and groups tables with top market cap stocks
+# This script creates sector and groups tables with top market cap stocks - i don't think this script is needed as groupssectors.py covers this functionality
 import psycopg2
 import sys
 

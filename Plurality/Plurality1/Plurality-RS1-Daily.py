@@ -40,7 +40,7 @@ def get_rs_ticker(cl_df,tkr_list,dat):
 
     for ticker in tkr_list:
         count = count + 1
-        print("calculating RS for ticker %s %s/%s" % (ticker, count,  tot))
+        #print("calculating RS for ticker %s %s/%s" % (ticker, count,  tot))
         df=cl_df.loc[cl_df['ticker'] == ticker]
         #df= df.sort_values(by='date', ascending=False, inplace=True)
         if len(df.index) == 0:
@@ -71,7 +71,7 @@ def get_rs_ticker_old(conn,tkr_list,dat):
 
     for ticker in tkr_list:
         count = count + 1
-        print("calculating RS for ticker %s %s/%s" % (ticker, count,  tot))
+        #print("calculating RS for ticker %s %s/%s" % (ticker, count,  tot))
         df=get_close_ticker_old(conn, ticker)
         if len(df.index) == 0:
             rs_dict[ticker]=[None, None, None, None, None]
@@ -159,6 +159,7 @@ def update_RS(ddf,RS_dict,dateee,conn):
 
 def update_ind_groups(conn, dff, table):
     """
+
     Here we are going save the dataframe in memory
     and use copy_from() to copy it to the table
     """
@@ -196,9 +197,10 @@ if __name__ == '__main__':
 
     df = get_tickers(con)
 
-    # RS for a particular date - default today
+    # RS for a particular date - default today 2
     dateTimeObj = datetime.datetime.now()
     datee= dateTimeObj-datetime.timedelta(days=0)
+    print(datee)
 
     ticker_list = list(df.ticker.unique())
     df_close = get_close_ticker_all(con)
