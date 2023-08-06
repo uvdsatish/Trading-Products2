@@ -446,8 +446,8 @@ if __name__ == '__main__':
 
     final_perf_summary = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-perf-summary.xlsx"
 
-    input_files_list = [satish_long_file, satish_short_file, mark_long_file, mark_short_file, spy_long_file, spy_short_file, qqq_long_file, qqq_short_file, iwm_long_file, iwm_short_file, mdy_long_file, mdy_short_file, ffty_long_file, ffty_short_file]
-    #input_files_list = [spy_short_file]
+    #input_files_list = [satish_long_file, satish_short_file, mark_long_file, mark_short_file, spy_long_file, spy_short_file, qqq_long_file, qqq_short_file, iwm_long_file, iwm_short_file, mdy_long_file, mdy_short_file, ffty_long_file, ffty_short_file]
+    input_files_list = [spy_short_file]
     perf_dict_list = []
 
     for file in input_files_list:
