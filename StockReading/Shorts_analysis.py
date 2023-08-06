@@ -6,13 +6,39 @@
 # this can be used/modified/updated for trade log to performance assessment
 import pandas as pd
 import psycopg2
-import datetime
+from datetime import datetime
 import sys
 import itertools
 import logging
 import concurrent.futures
 
 import numpy as np
+
+
+base_dir = "D:/Trading Dropbox/Satish Udayagiri/SatishUdayagiri/Trading/Process/StockReading-2023"
+
+# Create a custom logger
+logger = logging.getLogger(__name__)
+
+# Set level of logger
+logger.setLevel(logging.INFO)
+
+# Create file handler which logs even debug messages
+fh = logging.FileHandler(f'{base_dir}/shorts_analysis-{str(datetime.now().date())}.log')
+fh.setLevel(logging.INFO)
+
+# Create console handler with a higher log level
+ch = logging.StreamHandler()
+ch.setLevel(logging.ERROR)
+
+# Create formatter and add it to the handlers
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+fh.setFormatter(formatter)
+ch.setFormatter(formatter)
+
+# Add the handlers to the logger
+logger.addHandler(fh)
+logger.addHandler(ch)
 
 
 def connect(params_dic):
@@ -339,7 +365,7 @@ def update_performance(init_df, source, direction):
     perf_dict["source"] = source
     perf_dict["direction"] = direction
 
-    currDate = datetime.datetime.now().date()
+    currDate = datetime.now().date()
 
     init_df_daily = init_df.loc[init_df['date']
                                 < (currDate - pd.Timedelta(days=3))]
@@ -528,31 +554,6 @@ def process_file(file, valid_dates_list, allprice_df, output_files_dict):
 
 
 if __name__ == '__main__':
-    base_dir = "D:/Trading Dropbox/Satish Udayagiri/SatishUdayagiri/Trading/Process/StockReading-2023"
-
-    # Create a custom logger
-    logger = logging.getLogger(__name__)
-
-    # Set level of logger
-    logger.setLevel(logging.INFO)
-
-    # Create file handler which logs even debug messages
-    fh = logging.FileHandler(f'{base_dir}/shorts_analysis-{str(datetime.datetime.now().date())}.log')
-    fh.setLevel(logging.INFO)
-
-    # Create console handler with a higher log level
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.ERROR)
-
-    # Create formatter and add it to the handlers
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    fh.setFormatter(formatter)
-    ch.setFormatter(formatter)
-
-    # Add the handlers to the logger
-    logger.addHandler(fh)
-    logger.addHandler(ch)
-
     host = "127.0.0.1"  # Localhost
     port = 9100  # Historical data socket port
 
