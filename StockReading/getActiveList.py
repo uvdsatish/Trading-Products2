@@ -63,6 +63,7 @@ def get_allprice_data(con):
                       columns=['Ticker', 'timestamp', 'high', 'low', 'open', 'close', 'volume', 'openinterest','dma50','vma30'])
 
     allprice_df['date'] = allprice_df.timestamp.apply(lambda x: x.date())
+    allprice_df = allprice_df.drop_duplicates(subset=['Ticker','date'], keep='last')
     allprice_df.set_index(['Ticker', 'date'], drop=True, inplace=True)
     allprice_df.index.sortlevel(level=0, sort_remaining=True)
 
@@ -180,12 +181,12 @@ if __name__ == '__main__':
     ffty_long_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-FFTY-Long-ip.xlsx"
     ffty_short_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-FFTY-Short-ip.xlsx"
 
-    #input_files_list = [satish_long_file, satish_short_file, mark_long_file, mark_short_file, spy_long_file,
-    #                    spy_short_file, qqq_long_file, qqq_short_file, iwm_long_file, iwm_short_file, mdy_long_file,
-    #                    mdy_short_file, ffty_long_file, ffty_short_file]
+    input_files_list = [satish_long_file, satish_short_file, mark_long_file, mark_short_file, spy_long_file,
+                        spy_short_file, qqq_long_file, qqq_short_file, iwm_long_file, iwm_short_file, mdy_long_file,
+                        mdy_short_file, ffty_long_file, ffty_short_file]
 
-    input_files_list = [ spy_short_file, qqq_short_file,  iwm_short_file,
-                        mdy_short_file, ffty_short_file]
+    #input_files_list = [ spy_short_file, qqq_short_file,  iwm_short_file,
+    #                    mdy_short_file, ffty_short_file]
 
     int_files_dict = {
         "satish_long_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-Satish-Long-int.xlsx",

@@ -173,60 +173,90 @@ def update_output_excel(init_df,direction, source, output_files_dict):
 
 
 def highestHigh(date1,ticker,status_dt,allp_df):
-    if date1.size == ticker.size:
-        temp_df = pd.DataFrame(columns = ['NextDayDate','Ticker','status_date'])
-        temp_df['NextDayDate'] = date1
-        temp_df['Ticker'] = ticker
-        temp_df['status_date'] = status_dt
-    else:
+
+    if not date1.size == ticker.size:
         print("dates and tickers size mismatching")
         sys.exit(1)
-    counter = itertools.count(0)
-    high_list = [getHigh(x,y,z,allp_df, next(counter)) for x, y, z in zip(temp_df['NextDayDate'],temp_df['Ticker'], temp_df['status_date'])]
-    return high_list
+
+    ticker_data = prepare_ticker_data(allp_df)
+
+    results = pd.DataFrame({'NextDayDate': date1, 'Ticker': ticker,'status_date': status_dt})
+    results['HighestHigh'] = results.apply(lambda row: getHigh(row['NextDayDate'], row['Ticker'], row['status_date'],ticker_data), axis=1)
+
+    return results['HighestHigh'].tolist()
 
 
-def getHigh(nextdaydate,ticker,status_date,allp_df, count):
-    print("trade %s" % count)
+def prepare_ticker_data(allp_df):
+    # what does this do?
+    return {
+        ticker: df
+        for ticker, df in allp_df.groupby(level = 0)
+    }
+
+def getHigh(nextdaydate,ticker,status_date,ticker_data):
+    # how to get the count?
+    # print("trade %s" % count)
     print("ticker %s" % ticker)
-    # we need to change the code here, if we are making some trades inactive
-    allpm_df = allp_df.loc[(allp_df.index.get_level_values(0) == ticker) & (allp_df.index.get_level_values(1) >= nextdaydate) & (allp_df.index.get_level_values(1) <= status_date)]
-    if len(allpm_df) == 0:
-        print("ticker %s data is not found between dates %s and %s" %(ticker,nextdaydate, status_date))
-        h_list =[0,0]
-    else:
-        hh = allpm_df['high'].max()
-        hd = allpm_df.at[allpm_df['high'].idxmax(),'Date']
-        hh = round(hh,2)
-        h_list  = [hh,hd]
-    return h_list
+
+    if ticker not in ticker_data:
+        print(f"Ticker{ticker} data is not found")
+        return [0,0]
+
+    df = ticker_data[ticker]
+
+    mask = (pd.to_datetime(df.index.get_level_values(1)) >= pd.to_datetime(nextdaydate)) & (pd.to_datetime(df.index.get_level_values(1)) <= pd.to_datetime(status_date))
+
+    subset = df[mask]
+
+    if subset.empty:
+        print(f"Ticker {ticker} datat is not found between dates {nextdaydate} and {status_date}")
+        return [0,0]
+
+    max_high = subset['high'].max()
+    max_high_date = subset.loc[subset['high'].idxmax(),'date']
+
+    return[round(max_high,2), max_high_date]
+
+
 
 def lowestLow(date1, ticker, status_dt, allp_df):
-    if date1.size == ticker.size:
-        temp_df = pd.DataFrame(columns=['NextDayDate', 'Ticker', 'status_date'])
-        temp_df['NextDayDate'] = date1
-        temp_df['Ticker'] = ticker
-        temp_df['status_date'] = status_dt
-    else:
+    if not date1.size == ticker.size:
         print("dates and tickers size mismatching")
         sys.exit(1)
-    counter = itertools.count(0)
-    low_list = [getLow(x, y, z, allp_df, next(counter)) for x, y, z in zip(temp_df['NextDayDate'], temp_df['Ticker'], temp_df['status_date'])]
-    return low_list
+
+    ticker_data = prepare_ticker_data(allp_df)
+
+    results = pd.DataFrame({'NextDayDate': date1, 'Ticker': ticker, 'status_date': status_dt})
+    results['LowestLow'] = results.apply(
+        lambda row: getLow(row['NextDayDate'], row['Ticker'], row['status_date'], ticker_data), axis=1)
+
+    return results['LowestLow'].tolist()
 
 
-def getLow(nextdaydate, ticker, status_date, allp_df, count):
-    print("trade %s" % count)
-    allpm_df = allp_df.loc[(allp_df.index.get_level_values(0) == ticker) & (allp_df.index.get_level_values(1) >= nextdaydate) & (allp_df.index.get_level_values(1) <= status_date)]
-    if len(allpm_df) == 0:
-        print("ticker %s data is not found between dates %s and %s" %(ticker, nextdaydate, status_date))
-        l_list =[0,0]
-    else:
-        ll = allpm_df['low'].min()
-        ld = allpm_df.at[allpm_df['low'].idxmin(),'Date']
-        ll = round(ll,2)
-        l_list = [ll, ld]
-    return l_list
+def getLow(nextdaydate, ticker, status_date, ticker_data):
+    # how to get the count?
+    # print("trade %s" % count)
+    print("ticker %s" % ticker)
+
+    if ticker not in ticker_data:
+        print(f"Ticker{ticker} data is not found")
+        return [0, 0]
+
+    df = ticker_data[ticker]
+
+    mask = (pd.to_datetime(df.index.get_level_values(1)) >= pd.to_datetime(nextdaydate)) & (
+                pd.to_datetime(df.index.get_level_values(1)) <= pd.to_datetime(status_date))
+
+    subset = df[mask]
+
+    if subset.empty:
+        print(f"Ticker {ticker} datat is not found between dates {nextdaydate} and {status_date}")
+        return [0, 0]
+
+    min_low = subset['low'].min()
+    min_low_date = subset.loc[subset['low'].idxmin(), 'date']
+
+    return [round(min_low, 2), min_low_date]
 
 
 def split_columns(orig_df,col):
@@ -297,6 +327,8 @@ def update_performance(init_df, source, direction):
     perf_dict["direction"] = direction
 
     currDate = datetime.datetime.now().date()
+
+    init_df.columns.values[0] = 'date'
 
     init_df_daily = init_df.loc[init_df['date'] < (currDate - pd.Timedelta(days=3))]
     init_df_weekly = init_df.loc[init_df['date'] < (currDate - pd.Timedelta(days=7))]
@@ -474,7 +506,7 @@ if __name__ == '__main__':
         print("updating prices")
         init_df = update_prices(init_df,allprice_df)
 
-        allprice_df['Date'] = allprice_df.index.get_level_values(1)
+        allprice_df['date'] = allprice_df.index.get_level_values(1)
         direction =init_df.at[0,"Direction"]
         source = init_df.at[0, "Source"]
 
