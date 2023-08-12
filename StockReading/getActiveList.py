@@ -2,9 +2,8 @@ import pandas as pd
 import psycopg2
 import datetime
 import sys
-import itertools
-import numpy as np
 from datetime import datetime
+import numpy as np
 
 def connect(params_dic):
     """ Connect to the PostgreSQL database server """
@@ -82,40 +81,76 @@ def update_input_file(init_df, valid_dates_list, allprice_df):
     return init_df
 
 
-def update_status_date(init_df, allprice_df):
-    for index, row in init_df.iterrows():
-        print('getting status for ticker %s for date %s' % (row["Ticker"], row["date"]))
-        status_date_list = get_status_date(row["Ticker"], row["date"], row["Direction"], allprice_df)
-        init_df.at[index, 'status'] = status_date_list[0]
-        init_df.at[index, 'status_date'] = status_date_list[1]
+def update_status_date(ticker, date, direction, allprice_df):
+
+    ticker_data = prepare_ticker_data(allprice_df)
+
+    results = pd.DataFrame({'entryDate': date, 'Ticker': ticker, 'Direction': direction})
+    results['statusanddate'] = results.apply(
+        lambda row: get_statusanddate(row['entryDate'], row['Ticker'], row['Direction'], ticker_data), axis=1)
+
+    return results['statusanddate'].tolist()
 
 
-    return init_df
 
+def get_statusanddate(entryDate,ticker,direction,ticker_data):
 
-def get_status_date(ticker, entryDate, direction, allprice_df):
-    tmp_df = allprice_df.loc[
-        (allprice_df.index.get_level_values(0) == ticker) & (allprice_df.index.get_level_values(1) >= entryDate) & (
-                    allprice_df.index.get_level_values(1) <= datetime.today().date())]
-    tmp_df.timestamp = tmp_df.timestamp.apply(lambda x: x.date())
-    status = "Active"
-    status_date = datetime.today().date()
+    if ticker not in ticker_data:
+        print(f"Ticker{ticker} data is not found")
+        return [0, 0]
+
+    df = ticker_data[ticker]
+
+    mask = (pd.to_datetime(df.index.get_level_values(1)) >= pd.to_datetime(entryDate))
+
+    subset = df[mask]
+
+    if subset.empty:
+        print(f"Ticker {ticker} data is not found after the date {entryDate} ")
+        return [0, 0]
+
+    subset["status"] = 0
+    subset["date"] = subset.timestamp.apply(lambda x: x.date())
+
     if direction == "Long":
-        for index, row in tmp_df.iterrows():
-            if ((row['close'] < row['dma50']) & (row['volume'] > row['vma30'])):
-                status = "inactive"
-                status_date = row['timestamp']
-                break
+        subset["status"] = ((subset["close"] < subset["dma50"]) & (subset["volume"] > subset["vma30"]))
     elif direction == "Short":
-        for index, row in tmp_df.iterrows():
-            if ((row['close'] > row['dma50']) & (row['volume'] > row['vma30'])):
-                status = "inactive"
-                status_date = row['timestamp']
-                break
+        subset["status"] = ((subset["close"] > subset["dma50"]) & (subset["volume"] > subset["vma30"]))
     else:
-        print("Incorrect direction")
+        print("incorrect direction")
+        sys.exit(1)
+
+
+    if subset['status'].any():
+        status = "InActive"
+    else:
+        status = "Active"
+
+    if status == "InActive":
+        status_date = subset.loc[subset['status'].idxmax(),'date']
+    else:
+        status_date = datetime.today().date()
 
     return [status, status_date]
+
+
+def prepare_ticker_data(allp_df):
+    # what does this do?
+    return {
+        ticker: df
+        for ticker, df in allp_df.groupby(level = 0)
+    }
+
+
+def split_columns(orig_df,col):
+    orig_df = orig_df.drop(columns = ["status", "status_date"], axis=1)
+    split_df = pd.DataFrame(orig_df[col].tolist(),columns=["status", "status_date"])
+    orig_df = pd.concat([orig_df,split_df], axis=1)
+    orig_df = orig_df.drop(columns=["statusanddate"], axis=1)
+
+    return orig_df
+
+
 
 def update_int_excel(init_df,direction, source, int_files_dict):
     if source=="Mark" and direction == "Long":
@@ -205,22 +240,32 @@ if __name__ == '__main__':
         "ffty_short_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-FFTY-Short-int.xlsx"
     }
 
+    print(" getting valid dates")
+
     valid_dates_list = get_valid_dates(con)
+    print(" getting price data")
 
     allprice_df = get_allprice_data(con)
 
     for file in input_files_list:
+        print(f"Processing file : {file}")
         init_df = read_data(file)
         init_df = update_input_file(init_df, valid_dates_list, allprice_df)
-        init_df = update_status_date(init_df, allprice_df)
-        init_df["activeDuration"] = init_df["status_date"] - init_df["date"]
-        init_df_active = init_df[init_df["status"] == 'Active']
+
+        init_df = init_df.assign(statusanddate=lambda x: update_status_date(x['Ticker'], x['date'], x['Direction'], allprice_df))
+
+        init_df = split_columns(init_df, "statusanddate")
+        init_df['date'] = init_df['date'].apply(pd.to_datetime)
+        init_df['status_date'] = init_df['status_date'].apply(pd.to_datetime)
+
+        init_df["activeDuration"] = (init_df["status_date"] - init_df["date"]).dt.days
 
         direction = init_df.at[0, "Direction"]
         source = init_df.at[0, "Source"]
 
         update_int_excel(init_df, direction, source, int_files_dict)
-        
+
+
 
 
     

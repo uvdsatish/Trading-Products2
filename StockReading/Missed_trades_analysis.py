@@ -373,14 +373,29 @@ def update_performance(init_df, source, direction):
     perf_dict["minReturnMin"] = round(init_df_quarterly['minReturn'].min(), 2)
 
     perf_dict["greatTradesCount"] = (init_df.loc[init_df["tradeQuality"] == "Great"]).shape[0]
+    perf_dict["greatTradesCount%"] = round(((init_df.loc[init_df["tradeQuality"] == "Great"]).shape[0]/(init_df_daily.shape)[0])*100,2)
     perf_dict["goodTradesCount"] = (init_df.loc[init_df["tradeQuality"] == "Good"]).shape[0]
+    perf_dict["goodTradesCount%"] = round(
+        ((init_df.loc[init_df["tradeQuality"] == "Good"]).shape[0] / (init_df_daily.shape)[0]) * 100, 2)
     perf_dict["okTradesCount"] = (init_df.loc[init_df["tradeQuality"] == "Ok"]).shape[0]
+    perf_dict["okTradesCount%"] = round(
+        ((init_df.loc[init_df["tradeQuality"] == "Ok"]).shape[0] / (init_df_daily.shape)[0]) * 100, 2)
     perf_dict["losingTradesCount"] = (init_df.loc[init_df["tradeQuality"] == "Losing"]).shape[0]
+    perf_dict["losingTradesCount%"] = round(
+        ((init_df.loc[init_df["tradeQuality"] == "Losing"]).shape[0] / (init_df_daily.shape)[0]) * 100, 2)
 
     perf_dict["superfastTradesCount"] = (init_df.loc[init_df["tradeSpeed"] == "SuperFast"]).shape[0]
+    perf_dict["superfastTradesCount%"] = round(
+        ((init_df.loc[init_df["tradeSpeed"] == "SuperFast"]).shape[0] / (init_df_daily.shape)[0]) * 100, 2)
     perf_dict["fastTradesCount"] = (init_df.loc[init_df["tradeSpeed"] == "Fast"]).shape[0]
+    perf_dict["fastTradesCount%"] = round(
+        ((init_df.loc[init_df["tradeSpeed"] == "Fast"]).shape[0] / (init_df_daily.shape)[0]) * 100, 2)
     perf_dict["averageTradesCount"] = (init_df.loc[init_df["tradeSpeed"] == "Average"]).shape[0]
+    perf_dict["averageTradesCount%"] = round(
+        ((init_df.loc[init_df["tradeSpeed"] == "Average"]).shape[0] / (init_df_daily.shape)[0]) * 100, 2)
     perf_dict["slowTradesCount"] = (init_df.loc[init_df["tradeSpeed"] == "Slow"]).shape[0]
+    perf_dict["slowTradesCount%"] = round(
+        ((init_df.loc[init_df["tradeSpeed"] == "Slow"]).shape[0] / (init_df_daily.shape)[0]) * 100, 2)
 
     perf_dict["greatsuperfastTradesCount"] = \
     (init_df.loc[(init_df["tradeQuality"] == "Great") & (init_df["tradeSpeed"] == "SuperFast")]).shape[0]
@@ -398,6 +413,9 @@ def update_performance(init_df, source, direction):
     perf_dict["totalAwesomeTrades"] = perf_dict["greatsuperfastTradesCount"] + perf_dict["greatfastTradesCount"] + \
                                       perf_dict["greataverageTradesCount"] + perf_dict["greatslowTradesCount"] + \
                                       perf_dict["goodsuperfastTradesCount"] + perf_dict["goodfastTradesCount"]
+
+    perf_dict["totalAwesomeTrades%"] = round(((perf_dict["totalAwesomeTrades"] /  perf_dict["dailyReturnCount"]) * 100),2)
+
 
     perf_dict["dailyWinRate"] = round(
         init_df_daily.loc[init_df_daily['dailyReturn'] >= 0, 'dailyReturn'].count() * 100 / (
