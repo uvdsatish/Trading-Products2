@@ -4,27 +4,25 @@
 #  Active-inactive (crossing 200MA) and corresponding dates, ATR stop based trading
 #  project 2: reversal bars - cgc etc; Historical; Delta (adding rows - new days/data, adding new indicators)
 # this can be used/modified/updated for trade log to performance assessment
-import pandas as pd
-import psycopg2
 import datetime
 import sys
 import glob
-from util import getLogger
+import os
 import numpy as np
+import pandas as pd
+from util import pg_connect
 
-
-logger = getLogger(__name__)
 
 def connect(params_dic):
     """ Connect to the PostgreSQL database server """
     try:
         # connect to the PostgreSQL server
-        logger.info('Connecting to the PostgreSQL database...')
+        print('Connecting to the PostgreSQL database...')
         conn = psycopg2.connect(**params_dic)
     except (Exception, psycopg2.DatabaseError) as error:
-        logger.error(error)
+        print(error)
         sys.exit(1)
-    logger.info("Connection successful")
+    print("Connection successful")
     return conn
 
 
@@ -100,7 +98,7 @@ def update_prices(init_df, allprice_df):
                  'low', 'open', 'volume', 'openinterest'], inplace=True)
     init_df.rename(columns={"close": "fridayClose"}, inplace=True)
 
-    logger.info('Setting mondayOpen and mondayClose')
+    print('Setting mondayOpen and mondayClose')
     init_df['basedate'] = init_df['NextDayDate']
     init_df = init_df.merge(allprice_df, on=['basedate', 'Ticker'], how='left')
     init_df.drop(columns=['basedate', 'timestamp', 'high',
@@ -108,21 +106,21 @@ def update_prices(init_df, allprice_df):
     init_df.rename(columns={"close": "mondayClose",
                    "open": "mondayOpen"}, inplace=True)
 
-    logger.info('Setting weekAheadClose')
+    print('Setting weekAheadClose')
     init_df['basedate'] = init_df['WeekAheadDate']
     init_df = init_df.merge(allprice_df, on=['basedate', 'Ticker'], how='left')
     init_df.drop(columns=['basedate', 'timestamp', 'high',
                  'low', 'open', 'volume', 'openinterest'], inplace=True)
     init_df.rename(columns={"close": "weekAheadClose"}, inplace=True)
 
-    logger.info('Setting monthAheadClose')
+    print('Setting monthAheadClose')
     init_df['basedate'] = init_df['MonthAheadDate']
     init_df = init_df.merge(allprice_df, on=['basedate', 'Ticker'], how='left')
     init_df.drop(columns=['basedate', 'timestamp', 'high',
                  'low', 'open', 'volume', 'openinterest'], inplace=True)
     init_df.rename(columns={"close": "monthAheadClose"}, inplace=True)
 
-    logger.info('Setting quarterAheadClose')
+    print('Setting quarterAheadClose')
     init_df['basedate'] = init_df['quarterAheadDate']
     init_df = init_df.merge(allprice_df, on=['basedate', 'Ticker'], how='left')
     init_df.drop(columns=['basedate', 'timestamp', 'high',
@@ -159,7 +157,7 @@ def update_returns(init_df, dir):
         init_df['quarterlyReturn'] = round((init_df['mondayOpen'] - init_df['quarterAheadClose']) * 100 / init_df[
             'mondayOpen'], 2)
     else:
-        logger.error("wrong direction")
+        print("wrong direction")
         sys.exit(1)
 
     return init_df
@@ -169,14 +167,14 @@ def update_output_excel(init_df, direction, source, output_files_dict):
     try:
         init_df.to_excel(output_files_dict[f"{source}_{direction}_file_op".lower()])
     except:
-        logger.error("wrong source or direction")
+        print("wrong source or direction")
         sys.exit(1)
 
 
 def highestHigh(date1, ticker, status_dt, allp_df):
     # Use a direct check for Series equality
     if not date1.size == ticker.size:
-        logger.error("dates and tickers size mismatching")
+        print("dates and tickers size mismatching")
         sys.exit(1)
     
     ticker_data = prepare_ticker_data(allp_df)
@@ -194,10 +192,10 @@ def prepare_ticker_data(allp_df):
 
 
 def getHigh(nextdaydate, ticker, status_date, ticker_data):
-    logger.info(f"Ticker: {ticker}")
+    print(f"Ticker: {ticker}")
 
     if ticker not in ticker_data:
-        logger.info(f"Ticker {ticker} data is not found.")
+        print(f"Ticker {ticker} data is not found.")
         return [0, 0]
 
     df = ticker_data[ticker]
@@ -208,7 +206,7 @@ def getHigh(nextdaydate, ticker, status_date, ticker_data):
     subset = df[mask]
     
     if subset.empty:
-        logger.info(f"Ticker {ticker} data is not found between dates {nextdaydate} and {status_date}")
+        print(f"Ticker {ticker} data is not found between dates {nextdaydate} and {status_date}")
         return [0, 0]
     
     max_high = subset['high'].max()
@@ -220,7 +218,7 @@ def getHigh(nextdaydate, ticker, status_date, ticker_data):
 def lowestLow(date1, ticker, status_dt, allp_df):
     # Use a direct check for Series equality
     if not date1.size == ticker.size:
-        logger.error("dates and tickers size mismatching")
+        print("dates and tickers size mismatching")
         sys.exit(1)
     
     ticker_data = prepare_ticker_data(allp_df)
@@ -232,10 +230,10 @@ def lowestLow(date1, ticker, status_dt, allp_df):
 
 
 def getLow(nextdaydate, ticker, status_date, ticker_data):
-    logger.info(f"Ticker: {ticker}")
+    print(f"Ticker: {ticker}")
 
     if ticker not in ticker_data:
-        logger.info(f"Ticker {ticker} data is not found.")
+        print(f"Ticker {ticker} data is not found.")
         return [0, 0]
 
     df = ticker_data[ticker]
@@ -246,7 +244,7 @@ def getLow(nextdaydate, ticker, status_date, ticker_data):
     subset = df[mask]
     
     if subset.empty:
-        logger.info(f"Ticker {ticker} data is not found between dates {nextdaydate} and {status_date}")
+        print(f"Ticker {ticker} data is not found between dates {nextdaydate} and {status_date}")
         return [0, 0]
     
     min_low = subset['low'].min()
@@ -284,7 +282,7 @@ def update_returns_duration(init_df, dir):
         init_df['tradeDurationMinReturn'] = (
             (init_df['HighestHighDate'] - init_df['NextDayDate']) / np.timedelta64(1, 'D'))
     else:
-        logger.error("wrong direction")
+        print("wrong direction")
         sys.exit(1)
 
     return init_df
@@ -465,26 +463,16 @@ def update_performance(init_df, source, direction):
 
 
 if __name__ == '__main__':
-    data_base_dir = '/home/dgadiraju/trade-engine'
-    host = "127.0.0.1"  # Localhost
-    port = 9100  # Historical data socket port
+    con = pg_connect()
+    data_base_dir = os.environ.get('DATA_BASE_DIR')
 
-    param_dic = {
-        "host": "localhost",
-        "database": "plurality",
-        "user": "dgadiraju",
-        "password": "Itversity!23"
-    }
-
-    con = connect(param_dic)
-
-    logger.info("Connected - now getting valid dates")
+    print("Connected - now getting valid dates")
     valid_dates = get_valid_dates(con)
     valid_dates.date = valid_dates["date"].apply(lambda x: x.date())
     valid_dates = valid_dates.sort_values(by="date", ascending=True)
     valid_dates_list = valid_dates['date'].tolist()
 
-    logger.info("got valid dates -- now getting all price data")
+    print("got valid dates -- now getting all price data")
     allprice_df = get_allprice_data(con)
     allprice_df['basedate'] = allprice_df.timestamp.apply(lambda x: x.date())
 
@@ -504,8 +492,8 @@ if __name__ == '__main__':
 
     for file in input_files_list:
         try:
-            logger.info(f'allprice_df columns: {allprice_df.columns}')
-            logger.info(f'Processing {file}')
+            print(f'allprice_df columns: {allprice_df.columns}')
+            print(f'Processing {file}')
             init_df = read_data(file)
             # Take only those trades where active duration is greater than 0
 
@@ -517,22 +505,22 @@ if __name__ == '__main__':
 
             direction = init_df.at[0, "Direction"]
             source = init_df.at[0, "Source"]
-            logger.info("processing file %s %s" % (source, direction))
+            print("processing file %s %s" % (source, direction))
 
-            logger.info("updating dates")
+            print("updating dates")
             init_df = update_dates(init_df, valid_dates_list)
 
-            logger.info("updating prices")
+            print("updating prices")
             init_df = update_prices(init_df, allprice_df)
 
             allprice_df['Date'] = allprice_df.index.get_level_values(1)
             direction = init_df.at[0, "Direction"]
             source = init_df.at[0, "Source"]
 
-            logger.info("updating returns")
+            print("updating returns")
             init_df = update_returns(init_df, direction)
 
-            logger.info("updating HighestHigh")
+            print("updating HighestHigh")
             init_df = init_df.assign(HighestHigh=lambda x: highestHigh(
                 x['NextDayDate'], x['Ticker'], x['status_date'], allprice_df))
             init_df = split_columns(init_df, "HighestHigh")
@@ -540,17 +528,17 @@ if __name__ == '__main__':
             init_df['HighestHighDate'] = pd.to_datetime(init_df['HighestHighDate'], errors='coerce')
             init_df['NextDayDate'] = pd.to_datetime(init_df['NextDayDate'])
 
-            logger.info("updating LowestLow")
+            print("updating LowestLow")
             init_df = init_df.assign(LowestLow=lambda x: lowestLow(
                 x['NextDayDate'], x['Ticker'], x['status_date'], allprice_df))
             init_df = split_columns(init_df, "LowestLow")
 
             init_df['LowestLowDate'] = pd.to_datetime(init_df['LowestLowDate'], errors='coerce')
 
-            logger.info("update max and min returns and trade duration")
+            print("update max and min returns and trade duration")
             init_df = update_returns_duration(init_df, direction)
 
-            logger.info("update trade quality and speed")
+            print("update trade quality and speed")
             init_df = update_trades_quality(init_df)
 
             init_df['Awesome Trade'] = (init_df["tradeQuality"] == "Great") | ((init_df["tradeQuality"] == "Good") & (
@@ -562,7 +550,7 @@ if __name__ == '__main__':
             perf_dict_list.append(perf_dict)
             allprice_df = allprice_df.drop('Date', axis=1)
         except:
-            logger.error(f'Failed processing {file}')
+            print(f'Failed processing {file}')
             raise
 
     perf_df = pd.DataFrame.from_dict(perf_dict_list)

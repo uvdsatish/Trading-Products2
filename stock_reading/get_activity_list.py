@@ -1,26 +1,10 @@
-import pandas as pd
-import psycopg2
 import datetime
 import sys
 import glob
 from datetime import datetime
-import numpy as np
-from util import getLogger
-
-# Initialize logger
-logger = getLogger(__name__)
-
-def connect(params_dic):
-    """ Connect to the PostgreSQL database server """
-    try:
-        # connect to the PostgreSQL server
-        logger.info('Connecting to the PostgreSQL database...')
-        conn = psycopg2.connect(**params_dic)
-    except (Exception, psycopg2.DatabaseError) as error:
-        logger.error(error)
-        sys.exit(1)
-    logger.info("Connection successful")
-    return conn
+import os
+import pandas as pd
+from util import pg_connect
 
 
 def read_data(file):
@@ -61,14 +45,14 @@ def update_dates(init_df, valid_dates_list):
 
 
 def get_allprice_data(con):
-    #get all price data
+    # get all price data
     cursor = con.cursor()
     select_query = "select * from usstockseod_sincedec2020_view"
     cursor.execute(select_query)
     all_price_cursor = cursor.fetchall()
 
     allprice_df = pd.DataFrame(all_price_cursor,
-                      columns=['Ticker', 'timestamp', 'high', 'low', 'open', 'close', 'volume', 'openinterest','dma50','vma30'])
+                               columns=['Ticker', 'timestamp', 'high', 'low', 'open', 'close', 'volume', 'openinterest', 'dma50', 'vma30'])
 
     allprice_df['date'] = allprice_df.timestamp.apply(lambda x: x.date())
     allprice_df.set_index(['Ticker', 'date'], drop=True, inplace=True)
@@ -82,7 +66,8 @@ def update_input_file(init_df, valid_dates_list, allprice_df):
     init_df = update_dates(init_df, valid_dates_list)
     init_df.rename(columns={'DateIdentified': 'date'}, inplace=True)
     init_df = init_df.merge(allprice_df, on=['date', 'Ticker'], how='left')
-    init_df.drop(columns=['timestamp', 'high', 'low', 'open', 'volume', 'openinterest', 'dma50', 'vma30'], inplace=True)
+    init_df.drop(columns=['timestamp', 'high', 'low', 'open',
+                 'volume', 'openinterest', 'dma50', 'vma30'], inplace=True)
     init_df.rename(columns={"close": "entryPrice"}, inplace=True)
     init_df["status"] = "Active"
     init_df["status_date"] = datetime.today().date()
@@ -94,7 +79,7 @@ def prepare_ticker_data(allp_df):
     # what does this do?
     return {
         ticker: df
-        for ticker, df in allp_df.groupby(level = 0)
+        for ticker, df in allp_df.groupby(level=0)
     }
 
 
@@ -102,15 +87,15 @@ def update_status_date(ticker, date, direction, allprice_df):
 
     ticker_data = prepare_ticker_data(allprice_df)
 
-    results = pd.DataFrame({'entryDate': date, 'Ticker': ticker, 'Direction': direction})
-    results['statusanddate'] = results.apply(
-        lambda row: get_statusanddate(row['entryDate'], row['Ticker'], row['Direction'], ticker_data), axis=1)
+    results = pd.DataFrame(
+        {'entry_date': date, 'ticker': ticker, 'direction': direction})
+    results['status_and_date'] = results.apply(
+        lambda row: get_status_and_date(row['entry_date'], row['ticker'], row['direction'], ticker_data), axis=1)
 
-    return results['statusanddate'].tolist()
+    return results['status_and_date'].tolist()
 
 
-
-def get_statusanddate(entryDate,ticker,direction,ticker_data):
+def get_status_and_date(entryDate, ticker, direction, ticker_data):
 
     if ticker not in ticker_data:
         print(f"Ticker{ticker} data is not found")
@@ -118,7 +103,8 @@ def get_statusanddate(entryDate,ticker,direction,ticker_data):
 
     df = ticker_data[ticker]
 
-    mask = (pd.to_datetime(df.index.get_level_values(1)) >= pd.to_datetime(entryDate))
+    mask = (pd.to_datetime(df.index.get_level_values(1))
+            >= pd.to_datetime(entryDate))
 
     subset = df[mask]
 
@@ -130,21 +116,22 @@ def get_statusanddate(entryDate,ticker,direction,ticker_data):
     subset["date"] = subset.timestamp.apply(lambda x: x.date())
 
     if direction == "Long":
-        subset["status"] = ((subset["close"] < subset["dma50"]) & (subset["volume"] > subset["vma30"]))
+        subset["status"] = ((subset["close"] < subset["dma50"]) & (
+            subset["volume"] > subset["vma30"]))
     elif direction == "Short":
-        subset["status"] = ((subset["close"] > subset["dma50"]) & (subset["volume"] > subset["vma30"]))
+        subset["status"] = ((subset["close"] > subset["dma50"]) & (
+            subset["volume"] > subset["vma30"]))
     else:
         print("incorrect direction")
         sys.exit(1)
 
-
     if subset['status'].any():
-        status = "InActive"
+        status = "Inactive"
     else:
         status = "Active"
 
-    if status == "InActive":
-        status_date = subset.loc[subset['status'].idxmax(),'date']
+    if status == "Inactive":
+        status_date = subset.loc[subset['status'].idxmax(), 'date']
     else:
         status_date = datetime.today().date()
 
@@ -152,44 +139,36 @@ def get_statusanddate(entryDate,ticker,direction,ticker_data):
 
 
 def update_int_excel(init_df, direction, source, int_files_dict):
-    # Fix the below code
     try:
-        init_df.to_excel(int_files_dict[f"{source}_{direction}_file_int".lower()])
+        init_df.to_excel(
+            int_files_dict[f"{source}_{direction}_file_int".lower()])
     except:
-        logger.error("wrong source or direction")
+        print("wrong source or direction")
         sys.exit(1)
 
 
 if __name__ == '__main__':
-    host = "127.0.0.1"  # Localhost
-    # logic to connect to postgres database using os
-    param_dic = {
-        "host": "localhost",
-        "database": "plurality",
-        "user": "dgadiraju",
-        "password": "Itversity!23"
-    }
-
-    con = connect(param_dic)
-
-    data_base_dir = '/home/dgadiraju/trade-engine'
-    input_files_list = glob.glob(f"{data_base_dir}/StockReading-2023/*-ip.xlsx")
+    con = pg_connect()
+    data_base_dir = os.environ.get('DATA_BASE_DIR')
+    input_files_list = glob.glob(
+        f"{data_base_dir}/StockReading-2023/*-ip.xlsx")
 
     def get_int_file_key(file):
         file_ = file.split('/')[-1].split('.')[0].lower().split('-')
         return f'{file_[1]}_{file_[2]}_file_int'
 
-    int_files_dict = dict(map(lambda file: (get_int_file_key(file), file.replace('-ip.xlsx', '-int.xlsx')), input_files_list))
+    int_files_dict = dict(map(lambda file: (get_int_file_key(
+        file), file.replace('-ip.xlsx', '-int.xlsx')), input_files_list))
 
-    logger.info("Connected - now getting valid dates")
+    print("Connected - now getting valid dates")
     valid_dates_list = get_valid_dates(con)
 
-    logger.info("got valid dates -- now getting all price data")
+    print("got valid dates -- now getting all price data")
     allprice_df = get_allprice_data(con)
 
     # Use below for loop as reference and convert to multi processing logic
     for file in input_files_list:
-        logger.info(f'Processing {file}')
+        print(f'Processing {file}')
         init_df = read_data(file)
         init_df = update_input_file(init_df, valid_dates_list, allprice_df)
         init_df = update_status_date(init_df.copy(), allprice_df.copy())
