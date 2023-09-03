@@ -6,6 +6,7 @@ import datetime
 from dateutil.relativedelta import relativedelta
 from io import StringIO
 import sys
+import time
 
 
 def connect(params_dic):
@@ -185,6 +186,8 @@ def update_ind_groups(conn, dff, table):
 
 
 if __name__ == '__main__':
+    # record start time
+    start = time.time()
 
     param_dic = {
         "host": "localhost",
@@ -215,6 +218,14 @@ if __name__ == '__main__':
     update_ind_groups(con, rs_d, "rs_industry_groups_history")
 
     con.close()
+
+    # record end time
+    end = time.time()
+
+    # print the difference between start
+    # and end time in milli. secs
+    print("The time of execution of above program is :",
+          ((end - start) * 10 ** 3) / 60000, "minutes")
 
 
 

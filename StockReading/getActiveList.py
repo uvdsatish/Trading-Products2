@@ -200,21 +200,20 @@ if __name__ == '__main__':
 
     con = connect(param_dic)
 
-    satish_long_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-Satish-Long-ip.xlsx"
-    satish_short_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-Satish-Short-ip.xlsx"
-    mark_long_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-Mark-Long-ip.xlsx"
-    mark_short_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-Mark-Short-ip.xlsx"
-    
-    spy_long_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-SPY-Long-ip.xlsx"
-    spy_short_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-SPY-Short-ip.xlsx"
-    qqq_long_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-QQQ-Long-ip.xlsx"
-    qqq_short_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-QQQ-Short-ip.xlsx"
-    iwm_long_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-IWM-Long-ip.xlsx"
-    iwm_short_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-IWM-Short-ip.xlsx"
-    mdy_long_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-MDY-Long-ip.xlsx"
-    mdy_short_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-MDY-Short-ip.xlsx"
-    ffty_long_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-FFTY-Long-ip.xlsx"
-    ffty_short_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-FFTY-Short-ip.xlsx"
+    satish_long_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\InputFiles\StockReadingMetrics-Satish-Long-ip.xlsx"
+    satish_short_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\InputFiles\StockReadingMetrics-Satish-Short-ip.xlsx"
+    mark_long_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\InputFiles\StockReadingMetrics-Mark-Long-ip.xlsx"
+    mark_short_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\InputFiles\StockReadingMetrics-Mark-Short-ip.xlsx"
+    spy_long_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\InputFiles\StockReadingMetrics-SPY-Long-ip.xlsx"
+    spy_short_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\InputFiles\StockReadingMetrics-SPY-Short-ip.xlsx"
+    qqq_long_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\InputFiles\StockReadingMetrics-QQQ-Long-ip.xlsx"
+    qqq_short_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\InputFiles\StockReadingMetrics-QQQ-Short-ip.xlsx"
+    iwm_long_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\InputFiles\StockReadingMetrics-IWM-Long-ip.xlsx"
+    iwm_short_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\InputFiles\StockReadingMetrics-IWM-Short-ip.xlsx"
+    mdy_long_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\InputFiles\StockReadingMetrics-MDY-Long-ip.xlsx"
+    mdy_short_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\InputFiles\StockReadingMetrics-MDY-Short-ip.xlsx"
+    ffty_long_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\InputFiles\StockReadingMetrics-FFTY-Long-ip.xlsx"
+    ffty_short_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\InputFiles\StockReadingMetrics-FFTY-Short-ip.xlsx"
 
     input_files_list = [satish_long_file, satish_short_file, mark_long_file, mark_short_file, spy_long_file,
                         spy_short_file, qqq_long_file, qqq_short_file, iwm_long_file, iwm_short_file, mdy_long_file,
@@ -224,20 +223,20 @@ if __name__ == '__main__':
     #                    mdy_short_file, ffty_short_file]
 
     int_files_dict = {
-        "satish_long_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-Satish-Long-int.xlsx",
-        "satish_short_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-Satish-Short-int.xlsx",
-        "mark_long_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-Mark-Long-int.xlsx",
-        "mark_short_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-Mark-Short-int.xlsx",
-        "spy_long_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-SPY-Long-int.xlsx",
-        "spy_short_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-SPY-Short-int.xlsx",
-        "qqq_long_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-QQQ-Long-int.xlsx",
-        "qqq_short_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-QQQ-Short-int.xlsx",
-        "iwm_long_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-IWM-Long-int.xlsx",
-        "iwm_short_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-IWM-Short-int.xlsx",
-        "mdy_long_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-MDY-Long-int.xlsx",
-        "mdy_short_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-MDY-Short-int.xlsx",
-        "ffty_long_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-FFTY-Long-int.xlsx",
-        "ffty_short_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading-2023\StockReadingMetrics-FFTY-Short-int.xlsx"
+        "satish_long_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\StockReading-2023\StockReadingMetrics-Satish-Long-int.xlsx",
+        "satish_short_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\StockReading-2023\StockReadingMetrics-Satish-Short-int.xlsx",
+        "mark_long_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\StockReading-2023\StockReadingMetrics-Mark-Long-int.xlsx",
+        "mark_short_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\StockReading-2023\StockReadingMetrics-Mark-Short-int.xlsx",
+        "spy_long_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\StockReading-2023\StockReadingMetrics-SPY-Long-int.xlsx",
+        "spy_short_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\StockReading-2023\StockReadingMetrics-SPY-Short-int.xlsx",
+        "qqq_long_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\StockReading-2023\StockReadingMetrics-QQQ-Long-int.xlsx",
+        "qqq_short_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\StockReading-2023\StockReadingMetrics-QQQ-Short-int.xlsx",
+        "iwm_long_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\StockReading-2023\StockReadingMetrics-IWM-Long-int.xlsx",
+        "iwm_short_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\StockReading-2023\StockReadingMetrics-IWM-Short-int.xlsx",
+        "mdy_long_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\StockReading-2023\StockReadingMetrics-MDY-Long-int.xlsx",
+        "mdy_short_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\StockReading-2023\StockReadingMetrics-MDY-Short-int.xlsx",
+        "ffty_long_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\StockReading-2023\StockReadingMetrics-FFTY-Long-int.xlsx",
+        "ffty_short_file_int": r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\StockReading\StockReading-2023\StockReadingMetrics-FFTY-Short-int.xlsx"
     }
 
     print(" getting valid dates")
