@@ -1,9 +1,10 @@
 import pandas as pd
 import psycopg2
-from io import StringIO
 import sys
 import talib as ta
 import time
+import numpy as np
+import datetime
 
 def connect(params_dic):
     """ Connect to the PostgreSQL database server """
@@ -17,322 +18,568 @@ def connect(params_dic):
     print("Connection successful")
     return conn
 
-def get_valid_dates(con):
+
+### First level data
+
+def get_allprice_data_sinceapril2021(con):
     cursor = con.cursor()
-    select_query = "select timestamp from valid_trading_dates"
+    select_query = "select * from usstockseod_sinceapril2021_view"
     cursor.execute(select_query)
     valid_dates = cursor.fetchall()
 
-    df = pd.DataFrame(valid_dates, columns=['date'])
-
-    return df
-
-
-def get_allprice_data(con):
-    cursor = con.cursor()
-    select_query = "select * from usstockseod_sinceapril2022_view"
-    cursor.execute(select_query)
-    stock_records = cursor.fetchall()
-
-    df = pd.DataFrame(stock_records,
+    df = pd.DataFrame(valid_dates,
                       columns=['ticker', 'timestamp', 'high', 'low', 'open', 'close', 'volume', 'openinterest'])
 
     return df
 
-def get_current_data(con):
-    cursor = con.cursor()
-    select_query = "select * from key_indicators_alltickers_sinceapril2022_view"
-    cursor.execute(select_query)
-    stock_records = cursor.fetchall()
 
-    df = pd.DataFrame(stock_records,
-            columns = ['ticker', 'date', 'timestamp', 'high', 'low', 'open', 'close',
-               'volume', 'openinterest', 'sma10', 'sma50', 'sma200', 'ema20',
-               'atr10', 'atr14', 'atr20', 'bb_upper', 'bb_lower', 'kc_middle', 'kc_upper',
-               'kc_lower', 'vma30', 'vma50', 'vma63', 'w52high', 'w52low', 'adx14', 'adx20',
-               'rsi14', 'rsi20', 'macd', 'macdsignal', 'macdhist', 'stoch14', 'stoch20', 'obv',
-               'reversal_bull', 'reversal_bear', 'key_reversal_bull', 'key_reversal_bear',
-               'tradingrange', 'cpr_bull', 'cpr_bear', 'cgc_bull', 'cgc_bear', 'outside_bar_up',
-               'outside_bar_down', 'inside_bar', 'signal_bar_bull', 'signal_bar_bear',
-               'nr7', 'tr3', 'stalling_bear', 'lrhchv', 'lrlchv', 'lv_day', 'lr_day', 'exhaust_bar_up',
-               'exhaust_bar_down', 'exhaust_condition_bull', 'exhaust_condition_bear',
-               'exhaust_trade_bull', 'exhaust_trade_bear', 'tb_up', 'tb_down', 'bl_up', 'bl_down',
-               'bg_up', 'bg_down', 'tbblbg_up', 'tbblbg_down', 'tbblbg_up_num', 'tbblbg_down_num',
-               'runaway_up_521', 'runaway_down_521', 'runaway_up_1030', 'runaway_down_1030',
-               'runaway_up_0205', 'runaway_down_0205'])
+### Second level data
+def calculate_moving_average(df, newcols2):
+    new_entries = {
+        'sma10': ta.SMA(df["close"], timeperiod=10),
+        'sma50': ta.SMA(df["close"], timeperiod=50),
+        'sma200': ta.SMA(df["close"], timeperiod=200),
+        'ema20': ta.EMA(df["close"], timeperiod=20)
+    }
+
+    newcols2.update(new_entries)
+
+    return newcols2
 
 
-    return df
+def calculate_ATR(df, newcols2):
+    new_entries = {
+        "atr10": ta.ATR(df["high"], df["low"], df["close"], timeperiod=10),
+        "atr14": ta.ATR(df["high"], df["low"], df["close"], timeperiod=14),
+        "atr20": ta.ATR(df["high"], df["low"], df["close"], timeperiod=20)
+    }
 
-def calculate_moving_average(df):
-    df["sma10"] = ta.SMA(df["close"], timeperiod=10)
-    df["sma50"] = ta.SMA(df["close"], timeperiod=50)
-    df["sma200"] = ta.SMA(df["close"], timeperiod=200)
-    df["ema20"] = ta.EMA(df["close"], timeperiod=20)
+    newcols2.update(new_entries)
 
-    return df
-
-def calculate_ATR(df):
-    df["atr10"] = ta.ATR(df["high"], df["low"], df["close"], timeperiod=10)
-    df["atr14"] = ta.ATR(df["high"], df["low"], df["close"], timeperiod=14)
-    df["atr20"] = ta.ATR(df["high"], df["low"], df["close"], timeperiod=20)
-
-    return df
-
-def BB_band(df):
-
-    df["bb_upper"] = ta.BBANDS(df["close"], timeperiod=20, nbdevup=2, nbdevdn=2, matype=0)[0]
-    df["bb_lower"] = ta.BBANDS(df["close"], timeperiod=20, nbdevup=2, nbdevdn=2, matype=0)[1]
-
-    return df
-
-def KC_band(df):
-
-    df["kc_middle"] = df["ema20"]
-    df["kc_upper"]  = df["kc_middle"] + 2*df["atr10"]
-    df["kc_lower"] = df["kc_middle"] - 2*df["atr10"]
-
-    return df
-
-def volume_MA(df):
-
-    df["vma30"] = ta.MA(df["volume"], timeperiod=30)
-    df["vma50"] = ta.MA(df["volume"], timeperiod=50)
-    df["vma63"] = ta.MA(df["volume"], timeperiod=63)
-
-    return df
-
-def yearly_high(df):
-
-    df["w52high"] = ta.MAX(df["high"], timeperiod=252)
-
-    return df
-
-def yearly_low(df):
-
-    df["w52low"] = ta.MIN(df["low"], timeperiod=252)
-
-    return df
-
-def adx(df):
-
-    df["adx14"] = ta.ADX(df["high"], df["low"], df["close"], timeperiod=14)
-    df["adx20"] = ta.ADX(df["high"], df["low"], df["close"], timeperiod=20)
-
-    return df
-
-def rsi(df):
-
-    df["rsi14"] = ta.RSI(df["close"], timeperiod=14)
-    df["rsi20"] = ta.RSI(df["close"], timeperiod=20)
-
-    return df
-
-def macd(df):
-
-    df["macd"], df["macdsignal"], df["macdhist"] = ta.MACD(df["close"], fastperiod=12, slowperiod=26, signalperiod=9)
-
-    return df
+    return newcols2
 
 
-def stoch(df):
+def volume_MA(df, newcols2):
+    new_entries = {
+        "vma30": ta.MA(df["volume"], timeperiod=30),
+        "vma50": ta.MA(df["volume"], timeperiod=50),
+        "vma63": ta.MA(df["volume"], timeperiod=63)
+    }
 
-    df["stoch14"] = ta.STOCH(df["high"], df["low"], df["close"], fastk_period=14, slowk_period=3, slowd_period=3)[0]
-    df["stoch20"] = ta.STOCH(df["high"], df["low"], df["close"], fastk_period=20, slowk_period=3, slowd_period=3)[0]
+    newcols2.update(new_entries)
 
-    return df
+    return newcols2
 
-def OBV(df):
 
-    df["obv"] = ta.OBV(df["close"], df["volume"])
+def trueRange(df, newcols2):
+    new_entries = {
+        "tr": ta.TRANGE(df["high"], df["low"], df["close"])
+    }
 
-    return df
+    newcols2.update(new_entries)
 
-def reversals(df):
+    return newcols2
 
-    df['reversal_bull'] = (df['low'] < df['low'].shift(periods=1)) & (
-                df['close'] > df['open']) & ((df['volume'] > df['volume'].shift(periods=1)) | (
-                df['volume'] > df['vma30']))
-    df['reversal_bear'] = (df['high'] > df['high'].shift(periods=1)) & (
-                df['close'] < df['open']) & ((df['volume'] > df['volume'].shift(periods=1)) | (
-                df['volume'] > df['vma30']))
 
-    return df
+def BB_band(df, newcols2):
+    new_entries = {
+        "bb_upper": ta.BBANDS(df["close"], timeperiod=20, nbdevup=2, nbdevdn=2, matype=0)[0],
+        "bb_lower": ta.BBANDS(df["close"], timeperiod=20, nbdevup=2, nbdevdn=2, matype=0)[1]
+    }
 
-def key_reversals(df):
+    newcols2.update(new_entries)
 
-    df['key_reversal_bull'] = (df['low'] < df['low'].shift(periods=1)) & (
-                df['close'] > df['close'].shift(periods=1)) & (df['close'] > df['open']) & (
-                                               (df['volume'] > df['volume'].shift(periods=1)) | (
-                                                   df['volume'] > df['vma30']))
-    df['key_reversal_bear'] = (df['high'] > df['high'].shift(periods=1)) & (
-                df['close'] < df['close'].shift(periods=1)) & (df['close'] < df['open']) & (
-                                               (df['volume'] > df['volume'].shift(periods=1)) | (
-                                                   df['volume'] > df['vma30']))
+    return newcols2
 
-    return df
 
-def trueRange(df):
-    #supposedly true range
+def yearly_high(df, newcols2):
+    new_entries = {
+        "w52high": ta.MAX(df["high"], timeperiod=252)
+    }
 
-    df["tradingrange"] = ta.TRANGE(df["high"], df["low"], df["close"])
+    newcols2.update(new_entries)
 
-    return df
+    return newcols2
 
-def cpr(df):
 
-    df['cpr_bull'] = (df['close'] > df['high'].shift(periods=1)) & (
-                (df['volume'] > df['volume'].shift(periods=1)) | (df['volume'] > df['vma30']))
-    df['cpr_bear'] = (df['close'] < df['low'].shift(periods=1)) & (
-                (df['volume'] > df['volume'].shift(periods=1)) | (df['volume'] > df['vma30']))
+def yearly_low(df, newcols2):
+    new_entries = {
+        "w52low": ta.MIN(df["low"], timeperiod=252)
+    }
 
-    return df
+    newcols2.update(new_entries)
 
-def cgc(df):
+    return newcols2
 
-    df['cgc_bull'] = (df['close'] > df['high'].shift(periods=1)) & (
-                df['open'] > df['close'].shift(periods=1)) & (
-                                      df['low'] > df['close'].shift(periods=1)) & (
-                                      (df['volume'] > df['volume'].shift(periods=1)) | (
-                                          df['volume'] > df['vma30']))
-    df['cgc_bear'] = (df['close'] < df['low'].shift(periods=1)) & (
-                df['open'] < df['close'].shift(periods=1)) & (
-                                      df['high'] < df['close'].shift(periods=1)) & (
-                                      (df['volume'] > df['volume'].shift(periods=1)) | (
-                                          df['volume'] > df['vma30']))
-    return df
 
-def outside_bar(df):
+def adx(df, newcols2):
+    new_entries = {
+        "adx14": ta.ADX(df["high"], df["low"], df["close"], timeperiod=14),
+        "adx20": ta.ADX(df["high"], df["low"], df["close"], timeperiod=20)
+    }
 
-    df['outside_bar_up'] = (df['close'] > df['open']) & (
-                df['low'] < df['low'].shift(periods=1)) & (
-                                            df['high'] > df['high'].shift(periods=1)) & (
-                                            (df['high'] - df['close']) < 0.33 * (
-                                                df['high'] - df['low'])) & (
-                                            (df['volume'] > df['volume'].shift(periods=1)) | (
-                                                df['volume'] > df['vma30']))
-    df['outside_bar_down'] = (df['close'] < df['open']) & (
-                df['low'] < df['low'].shift(periods=1)) & (
-                                              df['high'] > df['high'].shift(periods=1)) & (
-                                              (df['close'] - df['low']) < 0.33 * (
-                                                  df['high'] - df['low'])) & (
-                                              (df['volume'] > df['volume'].shift(periods=1)) | (
-                                                  df['volume'] > df['vma30']))
-    return df
+    newcols2.update(new_entries)
 
-def inside_bar(df):
+    return newcols2
 
-    df['inside_bar'] = (df['low'] > df['low'].shift(periods=1)) & (
+
+def macd(df, newcols2):
+    macd, macdsignal, macdhist = ta.MACD(df["close"], fastperiod=12, slowperiod=26, signalperiod=9)
+
+    new_entries = {
+        "macd": macd,
+        "macdsignal": macdsignal,
+        "macdhist": macdhist
+    }
+
+    newcols2.update(new_entries)
+
+    return newcols2
+
+
+def rsi(df, newcols2):
+    new_entries = {
+        "rsi14": ta.RSI(df["close"], timeperiod=14),
+        "rsi20": ta.RSI(df["close"], timeperiod=20)
+    }
+
+    newcols2.update(new_entries)
+
+    return newcols2
+
+
+def stoch(df, newcols2):
+    new_entries = {
+        "stoch14": ta.STOCH(df["high"], df["low"], df["close"], fastk_period=14, slowk_period=3, slowd_period=3)[0],
+        "stoch20": ta.STOCH(df["high"], df["low"], df["close"], fastk_period=20, slowk_period=3, slowd_period=3)[0]
+    }
+
+    newcols2.update(new_entries)
+
+    return newcols2
+
+
+def OBV(df, newcols2):
+    new_entries = {"obv": ta.OBV(df["close"], df["volume"])}
+
+    newcols2.update(new_entries)
+
+    return newcols2
+
+
+def inside_bar(df, newcols2):
+    new_entries = {
+        'inside_bar': (df['low'] > df['low'].shift(periods=1)) & (
                 df['high'] < df['high'].shift(periods=1))
+    }
 
-    return df
+    newcols2.update(new_entries)
 
-def signal_bar(df):
+    return newcols2
 
-    df['signal_bar_bull'] = (df['open'] < df['low'].shift(periods=1)) & (
+
+def signal_bar(df, newcols2):
+    new_entries = {
+        'signal_bar_bull': (df['open'] < df['low'].shift(periods=1)) & (
                 df['close'] > df['open']) & ((df['high'] - df['close']) < 0.2 * (
-                df['high'] - df['low']))
-    df['signal_bar_bear'] = (df['open'] > df['high'].shift(periods=1)) & (
+                df['high'] - df['low'])),
+        'signal_bar_bear': (df['open'] > df['high'].shift(periods=1)) & (
                 df['close'] < df['open']) & ((df['close'] - df['low']) < 0.2 * (
                 df['high'] - df['low']))
-    
-    return df
+    }
 
-def noRange(df):
+    newcols2.update(new_entries)
 
-    df['nr7'] = (df['tradingrange'] < df['tradingrange'].shift(periods=1)) & (df['tradingrange'] < df['tradingrange'].shift(periods=2)) & (
-                df['tradingrange'] < df['tradingrange'].shift(periods=3)) & (df['tradingrange'] < df['tradingrange'].shift(periods=4)) & (
-                            df['tradingrange'] < df['tradingrange'].shift(periods=5)) & (df['tradingrange'] < df['tradingrange'].shift(periods=6)) & (
-                            df['tradingrange'] < df['tradingrange'].shift(periods=7))
+    return newcols2
 
-    return df
 
-def tr3(df):
+def mBR(df, newcols2):
+    new_entries = {
+        'br2': np.maximum(df['high'], df['high'].shift(periods=1)) - np.minimum(df['low'], df['low'].shift(periods=1)),
+        'br3': np.maximum(df['high'], df['high'].shift(periods=1), df['high'].shift(periods=2)) - np.minimum(df['low'],
+                                                                                                             df[
+                                                                                                                 'low'].shift(
+                                                                                                                 periods=1),
+                                                                                                             df[
+                                                                                                                 'low'].shift(
+                                                                                                                 periods=2)),
+        'br4': np.maximum.reduce([df['high'], df['high'].shift(periods=1), df['high'].shift(periods=2),
+                                  df['high'].shift(periods=3)]) - np.minimum.reduce(
+            [df['low'], df['low'].shift(periods=1), df['low'].shift(periods=2), df['low'].shift(periods=3)]),
+        'br8': np.maximum.reduce(
+            [df['high'], df['high'].shift(periods=1), df['high'].shift(periods=2), df['high'].shift(periods=3),
+             df['high'].shift(periods=4), df['high'].shift(periods=5), df['high'].shift(periods=6),
+             df['high'].shift(periods=7)]) \
+               - np.minimum.reduce(
+            [df['low'], df['low'].shift(periods=1), df['low'].shift(periods=2), df['low'].shift(periods=3),
+             df['low'].shift(periods=4), df['low'].shift(periods=5), df['low'].shift(periods=6),
+             df['low'].shift(periods=7)]),
 
-    df['tr3'] = (df['tradingrange'] < 0.5 * df['atr14']) & (
-                df['tradingrange'].shift(periods=1) < 0.5 * df['atr14'].shift(periods=1)) & (
-                                 df['tradingrange'].shift(periods=2) < 0.5 * df['atr14'].shift(periods=2))
+    }
 
-    return df
+    newcols2.update(new_entries)
 
-def stalling_bear(df):
+    return newcols2
 
-    df['stalling_bear'] = (df['volume'] > df['volume'].shift(periods=1)) & (
+
+def doji(df, newcols2):
+    new_entries = {
+        'doji': abs(df['close'] - df['open']) <= 0.001 * df['close']
+    }
+
+    newcols2.update(new_entries)
+
+    return newcols2
+
+
+def midRange(df, newcols2):
+    new_entries = {
+        'mid_range': df['low'] + ((df['high'] - df['low']) / 2)
+    }
+
+    newcols2.update(new_entries)
+
+    return newcols2
+
+
+### Third level data
+def KC_band(df, newcols3):
+    new_entries = {
+        "kcmiddle": df["ema20"]
+    }
+
+    newcols3.update(new_entries)
+
+    return newcols3
+
+
+def reversals(df, newcols3):
+    new_entries = {
+        'reversal_bull': (df['low'] < df['low'].shift(periods=1)) & (
+                df['close'] > df['open']) & ((df['volume'] > df['volume'].shift(periods=1)) | (
+                df['volume'] > df['vma30'])),
+        'reversal_bear': (df['high'] > df['high'].shift(periods=1)) & (
+                df['close'] < df['open']) & ((df['volume'] > df['volume'].shift(periods=1)) | (
+                df['volume'] > df['vma30']))
+    }
+
+    newcols3.update(new_entries)
+
+    return newcols3
+
+
+def key_reversals(df, newcols3):
+    new_entries = {
+        'key_reversal_bull': (df['low'] < df['low'].shift(periods=1)) & (
+                df['close'] > df['close'].shift(periods=1)) & (df['close'] > df['open']) & (
+                                     (df['volume'] > df['volume'].shift(periods=1)) | (
+                                     df['volume'] > df['vma30'])),
+        'key_reversal_bear': (df['high'] > df['high'].shift(periods=1)) & (
+                df['close'] < df['close'].shift(periods=1)) & (df['close'] < df['open']) & (
+                                     (df['volume'] > df['volume'].shift(periods=1)) | (
+                                     df['volume'] > df['vma30']))
+    }
+
+    newcols3.update(new_entries)
+
+    return newcols3
+
+
+def cpr(df, newcols3):
+    new_entries = {
+        'cpr_bull': (df['close'] > df['high'].shift(periods=1)) & (
+                (df['volume'] > df['volume'].shift(periods=1)) | (df['volume'] > df['vma30'])),
+        'cpr_bear': (df['close'] < df['low'].shift(periods=1)) & (
+                (df['volume'] > df['volume'].shift(periods=1)) | (df['volume'] > df['vma30']))
+    }
+
+    newcols3.update(new_entries)
+
+    return newcols3
+
+
+def cgc(df, newcols3):
+    new_entries = {
+        'cgc_bull': (df['close'] > df['high'].shift(periods=1)) & (
+                df['open'] > df['close'].shift(periods=1)) & (
+                            df['low'] > df['close'].shift(periods=1)) & (
+                            (df['volume'] > df['volume'].shift(periods=1)) | (
+                            df['volume'] > df['vma30'])),
+        'cgc_bear': (df['close'] < df['low'].shift(periods=1)) & (
+                df['open'] < df['close'].shift(periods=1)) & (
+                            df['high'] < df['close'].shift(periods=1)) & (
+                            (df['volume'] > df['volume'].shift(periods=1)) | (
+                            df['volume'] > df['vma30']))
+    }
+
+    newcols3.update(new_entries)
+
+    return newcols3
+
+
+def outside_bar(df, newcols3):
+    new_entries = {
+        'outside_bar_up': (df['close'] > df['open']) & (
+                df['low'] < df['low'].shift(periods=1)) & (
+                                  df['high'] > df['high'].shift(periods=1)) & (
+                                  (df['high'] - df['close']) < 0.33 * (
+                                  df['high'] - df['low'])) & (
+                                  (df['volume'] > df['volume'].shift(periods=1)) | (
+                                  df['volume'] > df['vma30'])),
+        'outside_bar_down': (df['close'] < df['open']) & (
+                df['low'] < df['low'].shift(periods=1)) & (
+                                    df['high'] > df['high'].shift(periods=1)) & (
+                                    (df['close'] - df['low']) < 0.33 * (
+                                    df['high'] - df['low'])) & (
+                                    (df['volume'] > df['volume'].shift(periods=1)) | (
+                                    df['volume'] > df['vma30']))
+    }
+
+    newcols3.update(new_entries)
+
+    return newcols3
+
+
+def noRange(df, newcols3):
+    new_entries = {
+        'nr7': (df['tr'] < df['tr'].shift(periods=1)) & (df['tr'] < df['tr'].shift(periods=2)) & (
+                df['tr'] < df['tr'].shift(periods=3)) & (df['tr'] < df['tr'].shift(periods=4)) & (
+                       df['tr'] < df['tr'].shift(periods=5)) & (df['tr'] < df['tr'].shift(periods=6)),
+
+        'nr6': (df['tr'] < df['tr'].shift(periods=1)) & (df['tr'] < df['tr'].shift(periods=2)) & (
+                df['tr'] < df['tr'].shift(periods=3)) & (df['tr'] < df['tr'].shift(periods=4)) & (
+                       df['tr'] < df['tr'].shift(periods=5)),
+
+        'nr5': (df['tr'] < df['tr'].shift(periods=1)) & (df['tr'] < df['tr'].shift(periods=2)) & (
+                df['tr'] < df['tr'].shift(periods=3)) & (df['tr'] < df['tr'].shift(periods=4)),
+
+        'nr4': (df['tr'] < df['tr'].shift(periods=1)) & (df['tr'] < df['tr'].shift(periods=2)) & (
+                df['tr'] < df['tr'].shift(periods=3)),
+
+        'nr3': (df['tr'] < df['tr'].shift(periods=1)) & (df['tr'] < df['tr'].shift(periods=2)),
+
+        'nr2': (df['tr'] < df['tr'].shift(periods=1)),
+    }
+
+    newcols3.update(new_entries)
+
+    return newcols3
+
+
+def Hooks(df, newcols3):
+    new_entries = {
+        'bearhook': (df['open'] < df['low'].shift(periods=1)) & (df['close'] > df['close'].shift(periods=1)) & (
+                    df['tr'] < df['tr'].shift(periods=1)),
+
+        'bullhook': (df['open'] > df['high'].shift(periods=1)) & (df['close'] < df['close'].shift(periods=1)) & (
+                    df['tr'] < df['tr'].shift(periods=1))
+    }
+
+    newcols3.update(new_entries)
+
+    return newcols3
+
+
+def wideSpread(df, newcols3):
+    new_entries = {
+        'ws7': (df['tr'] > df['tr'].shift(periods=1)) & (df['tr'] > df['tr'].shift(periods=2)) & (
+                df['tr'] > df['tr'].shift(periods=3)) & (df['tr'] > df['tr'].shift(periods=4)) & (
+                       df['tr'] > df['tr'].shift(periods=5)) & (df['tr'] > df['tr'].shift(periods=6)),
+
+        'ws6': (df['tr'] > df['tr'].shift(periods=1)) & (df['tr'] > df['tr'].shift(periods=2)) & (
+                df['tr'] > df['tr'].shift(periods=3)) & (df['tr'] > df['tr'].shift(periods=4)) & (
+                       df['tr'] > df['tr'].shift(periods=5)),
+
+        'ws5': (df['tr'] > df['tr'].shift(periods=1)) & (df['tr'] > df['tr'].shift(periods=2)) & (
+                df['tr'] > df['tr'].shift(periods=3)) & (df['tr'] > df['tr'].shift(periods=4)),
+
+        'ws4': (df['tr'] > df['tr'].shift(periods=1)) & (df['tr'] > df['tr'].shift(periods=2)) & (
+                df['tr'] > df['tr'].shift(periods=3)),
+
+        'ws3': (df['tr'] > df['tr'].shift(periods=1)) & (df['tr'] > df['tr'].shift(periods=2)),
+
+        'ws2': (df['tr'] > df['tr'].shift(periods=1))
+    }
+
+    newcols3.update(new_entries)
+
+    return newcols3
+
+
+def tr3(df, newcols3):
+    new_entries = {
+        'tr3': (df['tr'] < 0.5 * df['atr14']) & (
+                df['tr'].shift(periods=1) < 0.5 * df['atr14'].shift(periods=1)) & (
+                       df['tr'].shift(periods=2) < 0.5 * df['atr14'].shift(periods=2))
+    }
+
+    newcols3.update(new_entries)
+
+    return newcols3
+
+
+def stalling_bear(df, newcols3):
+    new_entries = {
+        'stalling_bear': (df['volume'] > df['volume'].shift(periods=1)) & (
                 df['close'] > df['close'].shift(periods=1)) & ((df['high'] - df['close']) > 0.5 * (
                 df['high'] - df['low'])) & ((df['high'] - df['open']) < 0.2 * (
                 df['high'] - df['low']))
+    }
 
-    return df
+    newcols3.update(new_entries)
 
-def LRHCHV(df):
+    return newcols3
 
-    df['lrhchv'] = (df['tradingrange'] > 1.75 * df['atr14']) & (
+
+def LRHCHV(df, newcols3):
+    new_entries = {
+        'lrhchv': (df['tr'] > 1.75 * df['atr14']) & (
                 (df['high'] - df['close']) < 0.2 * (df['high'] - df['low'])) & (
-                                    df['close'] > df['open']) & (
-                                    (df['volume'] > df['volume'].shift(periods=1)) & (
-                                        df['volume'] > df['vma30']))
-    df['lrlchv'] = (df['tradingrange'] > 1.75 * df['atr14']) & (
+                          df['close'] > df['open']) & (
+                          (df['volume'] > df['volume'].shift(periods=1)) & (
+                          df['volume'] > df['vma30'])),
+        'lrlchv': (df['tr'] > 1.75 * df['atr14']) & (
                 (df['close'] - df['low']) < 0.2 * (df['high'] - df['low'])) & (
-                                    df['close'] < df['open']) & (
-                                    (df['volume'] > df['volume'].shift(periods=1)) & (
-                                        df['volume'] > df['vma30']))
+                          df['close'] < df['open']) & (
+                          (df['volume'] > df['volume'].shift(periods=1)) & (
+                          df['volume'] > df['vma30']))
+    }
 
-    return df
+    newcols3.update(new_entries)
 
-def LVLR(df):
+    return newcols3
 
-    df['lv_day'] = df['volume'] < 0.5 * df['vma30']
-    df['lr_day'] = df['tradingrange'] < 0.6 * df['atr14']
 
-    return df
+def LVLR(df, newcols3):
+    new_entries = {
+        'lv_day': df['volume'] < 0.5 * df['vma30'],
+        'lr_day': df['tr'] < 0.6 * df['atr14']
+    }
 
-def exhaust(df):
+    newcols3.update(new_entries)
 
-    df['exhaust_bar_up'] = (df['tradingrange'] > 2 * df['atr14']) & (
-                df['volume'] > 1.5 * df['atr14']) & (df['close'] > df['open'])
-    df['exhaust_bar_down'] = (df['tradingrange'] > 2 * df['atr14']) & (
-                df['volume'] > 1.5 * df['atr14']) & (df['close'] < df['open'])
-    df['exhaust_condition_bull'] = (df['exhaust_bar_up'].shift(periods=1) == True) & (
-                df['close'] > df['close'].shift(periods=1))
-    df['exhaust_condition_bear'] = (df['exhaust_bar_down'].shift(periods=1) == True) & (
-                df['close'] < df['close'].shift(periods=1))
+    return newcols3
 
-    df['exhaust_trade_bull'] = (df['exhaust_condition_bull'].shift(periods=1) == True) & (
-                df['close'] > df['high'].shift(periods=1))
-    df['exhaust_trade_bear'] = (df['exhaust_condition_bear'].shift(periods=1) == True) & (
-                df['close'] < df['low'].shift(periods=1))
-    return df
 
-def TBBLBG(df):
+def VLV(df, newcols3):
+    new_entries = {
+        'vlv_day': df['volume'] < 0.4 * df['vma30']
+    }
 
-    df['tb_up'] = ((df['high'] - df['low']) > 2 * df['atr20']) & (
+    newcols3.update(new_entries)
+
+    return newcols3
+
+
+def exhaust(df, newcols3):
+    new_entries = {
+        'exhaust_bar_up': (df['tr'] > 2 * df['atr14']) & (
+                df['volume'] > 1.5 * df['atr14']) & (df['close'] > df['open']),
+        'exhaust_bar_down': (df['tr'] > 2 * df['atr14']) & (
+                df['volume'] > 1.5 * df['atr14']) & (df['close'] < df['open']),
+    }
+
+    newcols3.update(new_entries)
+
+    return newcols3
+
+
+def tbblbg(df, newcols3):
+    new_entries = {
+        'tb_up': ((df['high'] - df['low']) > 2 * df['atr20']) & (
                 df['volume'] > df['volume'].shift(periods=1)) & (
-                                   (df['high'] - df['close']) < 0.33 * (df['high'] - df['low']))
-    df['tb_down'] = ((df['high'] - df['low']) > 2 * df['atr20']) & (
+                         (df['high'] - df['close']) < 0.33 * (df['high'] - df['low'])),
+        'tb_down': ((df['high'] - df['low']) > 2 * df['atr20']) & (
                 df['volume'] > df['volume'].shift(periods=1)) & (
-                                     (df['close'] - df['low']) < 0.33 * (df['high'] - df['low']))
+                           (df['close'] - df['low']) < 0.33 * (df['high'] - df['low'])),
 
-    df['bl_up'] = (df['low'] > df['close'].shift(periods=1)) & (
+        'bl_up': (df['low'] > df['close'].shift(periods=1)) & (
                 df['low'] < df['high'].shift(periods=1)) & (
-                                   (df['volume'] > df['volume'].shift(periods=1)) | (
-                                       df['volume'] > df['vma30']))
-    df['bl_down'] = (df['high'] < df['close'].shift(periods=1)) & (
+                         (df['volume'] > df['volume'].shift(periods=1)) | (
+                         df['volume'] > df['vma30'])),
+        'bl_down': (df['high'] < df['close'].shift(periods=1)) & (
                 df['high'] > df['low'].shift(periods=1)) & (
-                                     (df['volume'] > df['volume'].shift(periods=1)) | (
-                                         df['volume'] > df['vma30']))
+                           (df['volume'] > df['volume'].shift(periods=1)) | (
+                           df['volume'] > df['vma30'])),
 
-    df['bg_up'] = (df['low'] > df['high'].shift(periods=1)) & (
-                (df['volume'] > df['volume'].shift(periods=1)) | (df['volume'] > df['vma30']))
-    df['bg_down'] = (df['high'] < df['low'].shift(periods=1)) & (
-                (df['volume'] > df['volume'].shift(periods=1)) | (df['volume'] > df['vma30']))
+        'bg_up': (df['low'] > df['high'].shift(periods=1)) & (
+                (df['volume'] > df['volume'].shift(periods=1)) | (df['volume'] > df['vma30'])),
+        'bg_down': (df['high'] < df['low'].shift(periods=1)) & (
+                (df['volume'] > df['volume'].shift(periods=1)) | (df['volume'] > df['vma30'])),
 
-    df['tbblbg_up'] = df['tb_up'] | df['bl_up'] | df['bg_up']
-    df['tbblbg_down'] = df['tb_down'] | df['bl_down'] | df['bg_down']
+    }
 
-    return df
+    newcols3.update(new_entries)
 
-def TBBLBG_num(df):
+    return newcols3
 
+
+def rBRN(df, newcols3):
+    new_entries = {
+        'rbr2': df['br2'].rolling(window=20).min(),
+        'rbr3': df['br3'].rolling(window=20).min(),
+        'rbr4': df['br4'].rolling(window=30).min(),
+        'rbr8': df['br8'].rolling(window=40).min()
+    }
+
+    newcols3.update(new_entries)
+
+    return newcols3
+
+
+### Stage 4 level data
+
+def KC_band_extra(df, newcols4):
+    new_entries = {
+        "kcupper": df["kcmiddle"] + 2 * df["atr10"],
+        "kclower": df["kcmiddle"] - 2 * df["atr10"]
+    }
+
+    newcols4.update(new_entries)
+
+    return newcols4
+
+
+def tbblbg_cond(df, newcols4):
+    new_entries = {
+        'tbblbg_up': df['tb_up'] | df['bl_up'] | df['bg_up'],
+        'tbblbg_down': df['tb_down'] | df['bl_down'] | df['bg_down']
+    }
+
+    newcols4.update(new_entries)
+
+    return newcols4
+
+
+def exhaust_cond(df, newcols4):
+    new_entries = {
+        'exhaust_condition_bull': (df['exhaust_bar_up'].shift(periods=1) == True) & (
+                df['close'] > df['close'].shift(periods=1)),
+        'exhaust_condition_bear': (df['exhaust_bar_down'].shift(periods=1) == True) & (
+                df['close'] < df['close'].shift(periods=1)),
+    }
+
+    newcols4.update(new_entries)
+
+    return newcols4
+
+
+def mBNR_cond(df, newcols4):
+    new_entries = {
+        'twobnr': df['br2'] <= df['rbr2'],
+        'threebnr': df['br3'] <= df['rbr3'],
+        'fourbnr': df['br4'] <= df['rbr4'],
+        'eightbnr': df['br8'] <= df['rbr8']
+    }
+
+    newcols4.update(new_entries)
+
+    return newcols4
+
+
+### Stage 5 level data
+
+def tbblbg_num(df):
     df.loc[df['tbblbg_up'] == False, 'tbblbg_up_num'] = 0
     df.loc[df['tbblbg_up'] == True, 'tbblbg_up_num'] = 1
 
@@ -341,104 +588,466 @@ def TBBLBG_num(df):
 
     return df
 
-def runaway(df):
 
-    df['runaway_up_521'] = df['tbblbg_up_num'].rolling(21).sum()
-    df['runaway_down_521'] = df['tbblbg_down_num'].rolling(21).sum()
+def exhaust_final(df, newcols5):
+    new_entries = {
+        'exhaust_trade_bull': (df['exhaust_condition_bull'].shift(periods=1) == True) & (
+                df['close'] > df['high'].shift(periods=1)),
+        'exhaust_trade_bear': (df['exhaust_condition_bear'].shift(periods=1) == True) & (
+                df['close'] < df['low'].shift(periods=1))
+    }
 
-    df['runaway_up_1030'] = df['tbblbg_up_num'].rolling(30).sum()
-    df['runaway_down_1030'] = df['tbblbg_down_num'].rolling(30).sum()
+    newcols5.update(new_entries)
 
-    df['runaway_up_0205'] = df['tbblbg_up_num'].rolling(5).sum()
-    df['runaway_down_0205'] = df['tbblbg_down_num'].rolling(5).sum()
+    return newcols5
 
-    return df
+
+def runaway(df, newcols5):
+    new_entries = {
+        'runaway_up_521': df['tbblbg_up_num'].rolling(21).sum(),
+        'runaway_down_521': df['tbblbg_down_num'].rolling(21).sum(),
+
+        'runaway_up_1030': df['tbblbg_up_num'].rolling(30).sum(),
+        'runaway_down_1030': df['tbblbg_down_num'].rolling(30).sum(),
+
+        'runaway_up_0205': df['tbblbg_up_num'].rolling(5).sum(),
+        'runaway_down_0205': df['tbblbg_down_num'].rolling(5).sum()
+    }
+
+    newcols5.update(new_entries)
+
+    return newcols5
+
+
+# First extra indicators - trend day, future performances
+
+# extra1, Level1
+
+def td_metric1(df, newcols6):
+    tdm1a = ((df['close'] - df['low']) / (df['high'] - df['low'])) >= 0.85
+    tdm1b = ((df['high'] - df['close']) / (df['high'] - df['low'])) >= 0.85
+
+    new_entries = {
+        'tdm1': tdm1a | tdm1b
+    }
+
+    newcols6.update(new_entries)
+
+    return newcols6
+
+
+def td_metric2(df, newcols6):
+    tdm2a = (df['close'] - df['low']) >= 0.75 * df['atr14']
+    tdm2b = (df['high'] - df['close']) >= 0.75 * df['atr14']
+
+    new_entries = {
+        'tdm2': tdm2a | tdm2b
+    }
+
+    newcols6.update(new_entries)
+
+    return newcols6
+
+
+def td_metric3(df, newcols6):
+    tdm3a = ((df['close'] - df['open']) / df['open']) * 100 >= 1.5
+    tdm3b = ((df['open'] - df['close']) / df['open']) * 100 >= 1.5
+
+    new_entries = {
+        'tdm3': tdm3a | tdm3b
+    }
+
+    newcols6.update(new_entries)
+
+    return newcols6
+
+
+def return_1day(df, newcols6):
+    new_entries = {
+        'return_1day': (df['close'].shift(-1) - df['close']) / df['close']
+    }
+
+    newcols6.update(new_entries)
+
+    return newcols6
+
+
+def return_2days(df, newcols6):
+    new_entries = {
+        'return_2days': (df['close'].shift(-2) - df['close']) / df['close']
+    }
+
+    newcols6.update(new_entries)
+
+    return newcols6
+
+
+def return_3days(df, newcols6):
+    new_entries = {
+        'return_3days': (df['close'].shift(-3) - df['close']) / df['close']
+    }
+
+    newcols6.update(new_entries)
+
+    return newcols6
+
+
+def return_4days(df, newcols6):
+    new_entries = {
+        'return_4days': (df['close'].shift(-4) - df['close']) / df['close']
+    }
+
+    newcols6.update(new_entries)
+
+    return newcols6
+
+
+def return_1week(df, newcols6):
+    new_entries = {
+        'return_1week': (df['close'].shift(-5) - df['close']) / df['close']
+    }
+
+    newcols6.update(new_entries)
+
+    return newcols6
+
+
+def return_2weeks(df, newcols6):
+    new_entries = {
+        'return_2weeks': (df['close'].shift(-10) - df['close']) / df['close']
+    }
+
+    newcols6.update(new_entries)
+
+    return newcols6
+
+
+def return_3weeks(df, newcols6):
+    new_entries = {
+        'return_3weeks': (df['close'].shift(-15) - df['close']) / df['close']
+    }
+
+    newcols6.update(new_entries)
+
+    return newcols6
+
+
+def return_1month(df, newcols6):
+    new_entries = {
+        'return_1month': (df['close'].shift(-21) - df['close']) / df['close']
+    }
+
+    newcols6.update(new_entries)
+
+    return newcols6
+
+
+def return_2months(df, newcols6):
+    new_entries = {
+        'return_2months': (df['close'].shift(-42) - df['close']) / df['close']
+    }
+
+    newcols6.update(new_entries)
+
+    return newcols6
+
+
+def return_1quarter(df, newcols6):
+    new_entries = {
+        'return_1quarter': (df['close'].shift(-63) - df['close']) / df['close']
+    }
+
+    newcols6.update(new_entries)
+
+    return newcols6
+
+
+def return_2quarters(df, newcols6):
+    new_entries = {
+        'return_2quarters': (df['close'].shift(-126) - df['close']) / df['close']
+    }
+
+    newcols6.update(new_entries)
+
+    return newcols6
+
+
+def return_3quarters(df, newcols6):
+    new_entries = {
+        'return_3quarters': (df['close'].shift(-189) - df['close']) / df['close']
+    }
+
+    newcols6.update(new_entries)
+
+    return newcols6
+
+
+def return_1year(df, newcols6):
+    new_entries = {
+        'return_1year': (df['close'].shift(-252) - df['close']) / df['close']
+    }
+
+    newcols6.update(new_entries)
+
+    return newcols6
+
+
+# extra1, Level2
+
+def trend_day(df, newcols7):
+    new_entries = {
+        'trend_day': df['tdm1'] & df['tdm2'] & df['tdm3']
+    }
+
+    newcols7.update(new_entries)
+
+    return newcols7
+
+
+def likely_trend_day(df, newcols7):
+    new_entries = {
+        'likely_trend_day': df['tdm1'] | df['tdm2'] | df['tdm3']
+    }
+
+    newcols7.update(new_entries)
+
+    return newcols7
+
+# extra1, level3
+
+def future_trend_day(df, newcols8):
+
+    new_entries = {
+        'ftd': df['trend_day'].shift(-1),
+        'fltd': df['likely_trend_day'].shift(-1),
+        'ftdm1': df['tdm1'].shift(-1),
+        'ftdm2': df['tdm2'].shift(-1),
+        'ftdm3': df['tdm3'].shift(-1)
+    }
+
+    newcols8.update(new_entries)
+
+    return newcols8
+
+
 
 def get_key_indicators(tmp_df):
+    ###Level 2 data
+    new_columns2 = {}
 
-    tmp_df = calculate_moving_average(tmp_df)
+    new_columns2 = calculate_moving_average(tmp_df, new_columns2)
 
-    tmp_df = calculate_ATR(tmp_df)
+    new_columns2 = calculate_ATR(tmp_df, new_columns2)
 
-    tmp_df = BB_band(tmp_df)
+    new_columns2 = volume_MA(tmp_df, new_columns2)
 
-    tmp_df = KC_band(tmp_df)
+    new_columns2 = trueRange(tmp_df, new_columns2)
 
-    tmp_df = volume_MA(tmp_df)
+    new_columns2 = BB_band(tmp_df, new_columns2)
 
-    tmp_df = yearly_high(tmp_df)
+    new_columns2 = yearly_high(tmp_df, new_columns2)
 
-    tmp_df = yearly_low(tmp_df)
+    new_columns2 = yearly_low(tmp_df, new_columns2)
 
-    tmp_df = adx(tmp_df)
+    new_columns2 = adx(tmp_df, new_columns2)
 
-    tmp_df = rsi(tmp_df)
+    new_columns2 = macd(tmp_df, new_columns2)
 
-    tmp_df = macd(tmp_df)
+    new_columns2 = rsi(tmp_df, new_columns2)
 
-    tmp_df = stoch(tmp_df)
+    new_columns2 = stoch(tmp_df, new_columns2)
 
-    tmp_df = OBV(tmp_df)
+    new_columns2 = OBV(tmp_df, new_columns2)
 
-    tmp_df = reversals(tmp_df)
+    new_columns2 = inside_bar(tmp_df, new_columns2)
 
-    tmp_df = key_reversals(tmp_df)
+    new_columns2 = signal_bar(tmp_df, new_columns2)
 
-    tmp_df = trueRange(tmp_df)
+    new_columns2 = mBR(tmp_df, new_columns2)
 
-    tmp_df = cpr(tmp_df)
+    new_columns2 = doji(tmp_df, new_columns2)
 
-    tmp_df = cgc(tmp_df)
+    new_columns2 = midRange(tmp_df, new_columns2)
 
-    tmp_df = outside_bar(tmp_df)
+    tmp_df = pd.concat([tmp_df, pd.DataFrame(new_columns2)], axis=1)
 
-    tmp_df = inside_bar(tmp_df)
+    ###Level 3 data
 
-    tmp_df = signal_bar(tmp_df)
+    new_columns3 = {}
 
-    tmp_df = noRange(tmp_df)
+    new_columns3 = KC_band(tmp_df, new_columns3)
 
-    tmp_df = tr3(tmp_df)
+    new_columns3 = reversals(tmp_df, new_columns3)
 
-    tmp_df = stalling_bear(tmp_df)
+    new_columns3 = key_reversals(tmp_df, new_columns3)
 
-    tmp_df = LRHCHV(tmp_df)
+    new_columns3 = cpr(tmp_df, new_columns3)
 
-    tmp_df = LVLR(tmp_df)
+    new_columns3 = cgc(tmp_df, new_columns3)
 
-    tmp_df = exhaust(tmp_df)
+    new_columns3 = outside_bar(tmp_df, new_columns3)
 
-    tmp_df = TBBLBG(tmp_df)
+    new_columns3 = noRange(tmp_df, new_columns3)
 
-    tmp_df = TBBLBG_num(tmp_df)
+    new_columns3 = Hooks(tmp_df, new_columns3)
 
-    tmp_df = runaway(tmp_df)
+    new_columns3 = wideSpread(tmp_df, new_columns3)
 
-    return(tmp_df)
+    new_columns3 = tr3(tmp_df, new_columns3)
 
-def copy_from_stringio(conn, dff, table):
-    """
-    Here we are going save the dataframe in memory
-    and use copy_from() to copy it to the table
-    """
-    # save dataframe to an in memory buffer
-    buffer = StringIO()
-    dff.to_csv(buffer, index=False, header=False)
+    new_columns3 = stalling_bear(tmp_df, new_columns3)
 
-    buffer.seek(0)
+    new_columns3 = LRHCHV(tmp_df, new_columns3)
 
-    cursor = conn.cursor()
-    try:
-        cursor.copy_from(buffer, table, sep=",")
-        conn.commit()
-    except (Exception, psycopg2.DatabaseError) as error:
+    new_columns3 = LVLR(tmp_df, new_columns3)
 
-        print("Error: %s" % error)
-        conn.rollback()
-        cursor.close()
-        return 1
-    print("copy_from_stringio() done")
-    cursor.close()
+    new_columns3 = VLV(tmp_df, new_columns3)
+
+    new_columns3 = exhaust(tmp_df, new_columns3)
+
+    new_columns3 = tbblbg(tmp_df, new_columns3)
+
+    new_columns3 = rBRN(tmp_df, new_columns3)
+
+    tmp_df = pd.concat([tmp_df, pd.DataFrame(new_columns3)], axis=1)
+
+    ###Level 4 data
+
+    new_columns4 = {}
+
+    new_columns4 = KC_band_extra(tmp_df, new_columns4)
+
+    new_columns4 = tbblbg_cond(tmp_df, new_columns4)
+
+    new_columns4 = exhaust_cond(tmp_df, new_columns4)
+
+    new_columns4 = mBNR_cond(tmp_df, new_columns4)
+
+    tmp_df = pd.concat([tmp_df, pd.DataFrame(new_columns4)], axis=1)
+
+    ###Level 5 data
+
+    tmp_df = tbblbg_num(tmp_df)
+
+    new_columns5 = {}
+
+    new_columns5 = exhaust_final(tmp_df, new_columns5)
+
+    new_columns5 = runaway(tmp_df, new_columns5)
+
+    tmp_df = pd.concat([tmp_df, pd.DataFrame(new_columns5)], axis=1)
+
+    ### extra-1
+    ### extra-1, level-1
+
+    new_columns6 = {}
+
+    new_columns6 = td_metric1(tmp_df, new_columns6)
+
+    new_columns6 = td_metric2(tmp_df, new_columns6)
+
+    new_columns6 = td_metric3(tmp_df, new_columns6)
+
+    new_columns6 = return_1day(tmp_df, new_columns6)
+
+    new_columns6 = return_2days(tmp_df, new_columns6)
+
+    new_columns6 = return_3days(tmp_df, new_columns6)
+
+    new_columns6 = return_4days(tmp_df, new_columns6)
+
+    new_columns6 = return_1week(tmp_df, new_columns6)
+
+    new_columns6 = return_2weeks(tmp_df, new_columns6)
+
+    new_columns6 = return_3weeks(tmp_df, new_columns6)
+
+    new_columns6 = return_1month(tmp_df, new_columns6)
+
+    new_columns6 = return_2months(tmp_df, new_columns6)
+
+    new_columns6 = return_1quarter(tmp_df, new_columns6)
+
+    new_columns6 = return_2quarters(tmp_df, new_columns6)
+
+    new_columns6 = return_3quarters(tmp_df, new_columns6)
+
+    new_columns6 = return_1year(tmp_df, new_columns6)
+
+    tmp_df = pd.concat([tmp_df, pd.DataFrame(new_columns6)], axis=1)
+
+    ### extra-1, level-2
+
+    new_columns7 = {}
+
+    new_columns7 = trend_day(tmp_df, new_columns7)
+
+    new_columns7 = likely_trend_day(tmp_df, new_columns7)
+
+    tmp_df = pd.concat([tmp_df, pd.DataFrame(new_columns7)], axis=1)
+
+    ### extra-1, level-3
+
+    new_columns8 = {}
+
+    new_columns8 = future_trend_day(tmp_df, new_columns8)
+
+    tmp_df = pd.concat([tmp_df, pd.DataFrame(new_columns8)], axis=1)
+
+    return (tmp_df)
+
+def delete_existing_rows(cursor):
+
+
+    # Query to select rows that will be deleted
+    select_query = "SELECT * FROM key_indicators_alltickers WHERE date::DATE > %s"
+
+    # Date to compare
+    date_to_compare = datetime.date(2023, 3, 31)
+
+    # Execute the select query to fetch rows that will be deleted
+    cursor.execute(select_query, (date_to_compare,))
+    rows_to_delete = cursor.fetchall()
+
+    # Convert the fetched rows into a DataFrame
+    column_names = [desc[0] for desc in cursor.description]  # Get column names from cursor
+    df_deleted_rows = pd.DataFrame(rows_to_delete, columns=column_names)
+
+    # Delete query
+    delete_query = "DELETE FROM key_indicators_alltickers WHERE date::DATE > %s"
+
+    # Execute the delete query
+    cursor.execute(delete_query, (date_to_compare,))
+
+    # Return the DataFrame containing the deleted rows
+    return df_deleted_rows
+
+
+def insert_updated_rows(cursor,csv_file_path):
+
+
+    # Use COPY to load data from the CSV file into the table
+
+    with open(csv_file_path, 'r') as f:
+        cursor.copy_expert("""
+        COPY key_indicators_alltickers (ticker, date, timestamp, high, low, open, close, volume, openinterest,
+         sma10, sma50, sma200, ema20, atr10, atr14, atr20, vma30, vma50, vma63, tr, bb_upper, bb_lower, w52high,
+          w52low, adx14, adx20, macd, macdsignal, macdhist, rsi14, rsi20, stoch14, stoch20, obv, inside_bar,
+           signal_bar_bull, signal_bar_bear, br2, br3, br4, br8, doji, mid_range, kcmiddle, reversal_bull,
+            reversal_bear, key_reversal_bull, key_reversal_bear, cpr_bull, cpr_bear, cgc_bull, cgc_bear,
+             outside_bar_up, outside_bar_down, nr7, nr6, nr5, nr4, nr3, nr2, bearhook, bullhook, ws7, ws6, ws5, ws4,
+              ws3, ws2, tr3, stalling_bear, lrhchv, lrlchv, lv_day, lr_day, vlv_day, exhaust_bar_up,
+               exhaust_bar_down, tb_up, tb_down, bl_up, bl_down, bg_up, bg_down, rbr2, rbr3, rbr4, rbr8,
+                kcupper, kclower, tbblbg_up, tbblbg_down, exhaust_condition_bull, exhaust_condition_bear,
+                 twobnr, threebnr, fourbnr, eightbnr, tbblbg_up_num, tbblbg_down_num, exhaust_trade_bull,
+                  exhaust_trade_bear, runaway_up_521, runaway_down_521, runaway_up_1030, runaway_down_1030,
+                   runaway_up_0205, runaway_down_0205, tdm1, tdm2, tdm3, return_1day, return_2days, return_3days, 
+                   return_4days, return_1week, return_2weeks, return_3weeks, return_1month, return_2months, 
+                   return_1quarter, return_2quarters, return_3quarters, return_1year, trend_day, likely_trend_day,
+                   ftd, fltd, ftdm1, ftdm2, ftdm3)
+        FROM STDIN WITH (FORMAT csv, HEADER true, DELIMITER ',')
+        """, f)
+
 
 
 if __name__ == '__main__':
@@ -452,82 +1061,110 @@ if __name__ == '__main__':
 
     param_dic = {
         "host": "localhost",
-        "database": "Plurality",
+        "database": "markets_technicals",
         "user": "postgres",
         "password": "root"
     }
 
-    con = connect(param_dic)
+    try:
 
-    print("Connected - now getting valid dates")
-    valid_dates = get_valid_dates(con)
-    valid_dates.date = valid_dates["date"].apply(lambda x: x.date())
-    valid_dates = valid_dates.sort_values(by="date", ascending=True)
-    valid_dates_list = valid_dates['date'].tolist()
+        con = connect(param_dic)
 
-    print("got valid dates -- now getting all price data")
-    allprice_df = get_allprice_data(con)
-    allprice_df['date'] = allprice_df.timestamp.apply(lambda x: x.date())
+        # start transaction
 
-    number_of_tickers = len(allprice_df['ticker'].unique())
+        cursor = con.cursor()
 
-    print("got valid dates -- now getting all current indicators data")
-    allref_df = get_current_data(con)
+        # delete existing rows
+        print("deleting the existing rows")
 
-    #get the list of unique tickers
-    unique_tickers = allprice_df['ticker'].unique()
-    #unique_tickers = ['AAPL', 'AMZN', 'TSLA']
-    i= 0
+        old_df = delete_existing_rows(cursor)
 
-    tot_df = pd.DataFrame()
 
-    for t in unique_tickers:
-        i=i+1
-        if i == 100 or  i == 1000 or i == 2000 or i == 3000 or i == 4000 or i == 5000 or i == 6000 or i == 7000\
-            or i == 8000 or i == 9000 or i == 10000:
-             print("processing ticker %s" % t)
-             print("processing ticker %s out of %s" % (i , number_of_tickers))
+        # get the modified rows
+        print("getting all price data since april 2021 for full calculations")
+        allprice_df = get_allprice_data_sinceapril2021(con)
+        allprice_df['date'] = allprice_df.timestamp.apply(lambda x: x.date())
 
-        ref_df = allref_df.loc[allref_df['ticker'] == t]
-        ref_df = ref_df.sort_values(by="date", ascending=True)
 
-        ref_df = ref_df.reset_index(drop=True)
+        number_of_tickers = len(allprice_df['ticker'].unique())
 
-        tmp_df = allprice_df.loc[allprice_df['ticker']==t]
-        tmp_df = tmp_df.sort_values(by="date", ascending=True)
 
-        tmp_df = tmp_df.reset_index(drop=True)
+        #get the list of unique tickers
+        unique_tickers = allprice_df['ticker'].unique()
+        #unique_tickers = ['SPY', 'AAPL']
+        i= 0
 
-        tmp_df = tmp_df[["ticker", "date", "timestamp", "high", "low", "open", "close", "volume", "openinterest"]]
+        tot_df = pd.DataFrame()
 
-        tmp_df = get_key_indicators(tmp_df)
+        print("getting indicators calculated")
 
-        delta_df=pd.concat([tmp_df, ref_df]).sort_values('date')
+        for t in unique_tickers:
+            i=i+1
 
-        #drop duplicates based on date and ticker
+            if i == 1 or i == 100 or i == 1000 or i == 2000 or i == 3000 or i == 4000 or i == 5000 or i == 6000 or i == 7000 \
+                    or i == 8000 or i == 9000 or i == 10000 or i == 11000:
+                print("processing ticker %s" % t)
+                print("processing ticker %s out of %s" % (i, number_of_tickers))
 
-        delta_df=delta_df.drop_duplicates(subset=['ticker','date'], keep=False)
 
-        tot_df = pd.concat([delta_df,tot_df], ignore_index=True)
 
-    tot_df = tot_df.fillna(0)
-    # write df to local csv file
-    path_str = r"D:\data\db\key_indicators_population_delta6.csv"
+            tmp_df = allprice_df.loc[allprice_df['ticker']==t]
+            tmp_df = tmp_df.sort_values(by="date", ascending=True)
 
-    tot_df.to_csv(path_str, index=False)
+            tmp_df = tmp_df.reset_index(drop=True)
 
-    #copy from dataframe to table
-    copy_from_stringio(con, tot_df, "key_indicators_alltickers")
+            tmp_df = tmp_df[["ticker", "date", "timestamp", "high", "low", "open", "close", "volume", "openinterest"]]
 
-    con.close()
+            tmp_df = get_key_indicators(tmp_df)
 
-    # record end time
-    end = time.time()
+            tot_df = pd.concat([tot_df, tmp_df], ignore_index=True)
 
-    # print the difference between start
-    # and end time in milli. secs
-    print("The time of execution of above program is :",
-          ((end - start) * 10 ** 3)/60000, "minutes")
+        tot_df = tot_df.fillna(0)
+
+
+        # filtering the data after 2023-03-31
+        # Convert the timestamp column to datetime if it's not already
+        tot_df['timestamp'] = pd.to_datetime(tot_df['timestamp'])
+
+        # Filter rows where the date portion of the timestamp is greater than 2023-03-31
+        new_df = tot_df[tot_df['timestamp'].dt.date > pd.to_datetime('2023-03-31').date()]
+
+        # write df to local csv file
+        path_str = r"D:\data\db\key_indicators_population_delta.csv"
+
+        new_df.to_csv(path_str, index=False)
+
+        # Insert the modified rows
+        print("inserting modified rows")
+
+        insert_updated_rows(cursor,path_str)
+
+        # Commit transaction if everything is successful
+        con.commit()
+        print("Data has been successfully committed to the database.")
+
+    except Exception as e:
+        con.rollback()
+        print(f"Error occurred: {e}")
+        sys.exit(1)
+
+    finally:
+        if con:
+            cursor.close()
+            con.close()
+        # record end time
+        end = time.time()
+        # print the difference between start
+        # and end time in minutes
+        print("The time of execution of above program is :",
+              ((end - start) * 10 ** 3) / 60000, "minutes")
+
+    sys.exit(0)
+
+
+    
+
+
 
 
 

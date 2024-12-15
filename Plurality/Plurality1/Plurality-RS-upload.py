@@ -142,7 +142,7 @@ def get_plurality_filters(rs_df,plu_flag):
 if __name__ == '__main__':
     param_dic = {
         "host": "localhost",
-        "database": "Plurality",
+        "database": "markets_technicals",
         "user": "postgres",
         "password": "root"
     }
@@ -176,3 +176,5 @@ if __name__ == '__main__':
     update_ind_groups_plurality(con, cl_df, "rs_plurality_count_historical")
 
     con.close()
+
+    sys.exit(0)

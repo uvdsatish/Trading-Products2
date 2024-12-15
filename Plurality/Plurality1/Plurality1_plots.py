@@ -215,7 +215,7 @@ if __name__ == '__main__':
 
     param_dic = {
         "host": "localhost",
-        "database": "Plurality",
+        "database": "markets_technicals",
         "user": "postgres",
         "password": "root"
 
@@ -223,7 +223,6 @@ if __name__ == '__main__':
 
 
     pth = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Plurality\Plurality1"
-
     con = connect(param_dic)
     dateTimeObj = datetime.datetime.now()
     date1 = dateTimeObj - datetime.timedelta(days=-1) ## one less day
@@ -258,5 +257,7 @@ if __name__ == '__main__':
 
 
     con.close()
+
+    sys.exit(0)
 
 

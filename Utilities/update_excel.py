@@ -41,7 +41,7 @@ if __name__ == '__main__':
 
     con = connect(param_dic)
 
-    delta_days_from_current_date = 0
+    delta_days_from_current_date = 2
     dateTimeObj = datetime.datetime.now()
     run_date = dateTimeObj - datetime.timedelta(days=delta_days_from_current_date)
     run_date = run_date.strftime("%Y-%m-%d")

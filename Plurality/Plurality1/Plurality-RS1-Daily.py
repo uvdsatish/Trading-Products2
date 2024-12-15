@@ -117,7 +117,7 @@ def calculate_RS(ddf,edate,m):
 
 def get_close_ticker_all(connn):
     cursor = connn.cursor()
-    postgreSQL_select_Query = """select ticker, timestamp, close from usstockseod_sincemay2021_view """
+    postgreSQL_select_Query = """select ticker, timestamp, close from usstockseod_sinceapril2023_view """
     cursor.execute(postgreSQL_select_Query)
     close_prices = cursor.fetchall()
     c_f = pd.DataFrame(close_prices, columns=['ticker', 'timestamp', 'close'])
@@ -191,7 +191,7 @@ if __name__ == '__main__':
 
     param_dic = {
         "host": "localhost",
-        "database": "Plurality",
+        "database": "markets_technicals",
         "user": "postgres",
         "password": "root"
     }
@@ -200,7 +200,7 @@ if __name__ == '__main__':
 
     df = get_tickers(con)
 
-    # RS for a particular date - default today 2
+    # RS for a particular date - default today
     dateTimeObj = datetime.datetime.now()
     datee= dateTimeObj-datetime.timedelta(days=0)
     print(datee)
@@ -227,5 +227,5 @@ if __name__ == '__main__':
     print("The time of execution of above program is :",
           ((end - start) * 10 ** 3) / 60000, "minutes")
 
-
+    sys.exit(0)
 

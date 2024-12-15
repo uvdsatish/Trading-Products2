@@ -181,7 +181,7 @@ if __name__ == '__main__':
 
     param_dic = {
         "host": "localhost",
-        "database": "Plurality",
+        "database": "markets_technicals",
         "user": "postgres",
         "password": "root"
     }
@@ -235,6 +235,8 @@ if __name__ == '__main__':
     final_df.to_excel(file_path, index=False)
 
     con.close()
+
+    sys.exit(0)
 
 
 

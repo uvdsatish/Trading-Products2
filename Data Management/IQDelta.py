@@ -1,4 +1,4 @@
-# This script is upload net new eod data for all stocks, specific stocks, top 10 stocks per industry group to DB
+# This script is`Daily, KeyindicatorsPopulation_Delta, Plurality-RS-Upload, update_excel_RS, plurality1_plots
 import pandas as pd
 import psycopg2
 from io import StringIO
@@ -20,7 +20,6 @@ def connect(params_dic):
         sys.exit(1)
     print("Connection successful")
     return conn
-
 
 def get_rs_tickers(conn):
     cursor = conn.cursor()
@@ -247,7 +246,7 @@ if __name__ == '__main__':
 
     param_dic = {
         "host": "localhost",
-        "database": "Plurality",
+        "database": "markets_technicals",
         "user": "postgres",
         "password": "root"
     }
@@ -269,6 +268,7 @@ if __name__ == '__main__':
     # RS TICKERS
     #rs_list = get_rs_tickers(con)
     #date_tickers = get_dates_onlyRS_tickers(con, rs_list)
+
 
     #DEFAULT MODE - ALL TICKERS
     date_tickers = get_dates_all_tickers(con)
@@ -304,4 +304,4 @@ if __name__ == '__main__':
     print("The time of execution of above program is :",
           ((end - start) * 10 ** 3)/60000, "minutes")
 
-
+    sys.exit(0)
