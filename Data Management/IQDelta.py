@@ -137,7 +137,7 @@ def get_historical_data(dct_tickers):
         count = count + 1
         # Construct the message needed by IQFeed to retrieve data
 
-        message = "HDT,%s,%s,20250101\n" % (sym, dte)
+        message = "HDT,%s,%s,20270101\n" % (sym, dte)
         message = bytes(message, encoding='utf-8')
 
         # Open a streaming socket to the IQFeed server locally

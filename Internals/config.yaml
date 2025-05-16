@@ -1,0 +1,49 @@
+database:
+  dbname: markets_internals
+  user: postgres
+  password: root
+  host: localhost
+  port: 5432
+
+files:
+  - path: "C:/Users/uvdsa/OneDrive/Desktop/Internals/!NEWLONYA.csv"  # Use forward slashes
+    table_name: nylows_composite_raw
+    preprocessing:
+      skiprows: 1
+      header: 0
+      strip_columns: true
+
+  - path: "C:/Users/uvdsa/OneDrive/Desktop/Internals/!NEWHINYA.csv"
+    table_name: nyhighs_composite_raw
+    preprocessing:
+      skiprows: 1
+      header: 0
+      strip_columns: true
+
+  - path: "C:/Users/uvdsa/OneDrive/Desktop/Internals/!ADVNYA.csv"  # Use forward slashes
+    table_name: nyadvances_composite_raw
+    preprocessing:
+      skiprows: 1
+      header: 0
+      strip_columns: true
+
+  - path: "C:/Users/uvdsa/OneDrive/Desktop/Internals/!DECLNYA (1).csv"
+    table_name: nydeclines_composite_raw
+    preprocessing:
+      skiprows: 1
+      header: 0
+      strip_columns: true
+
+  - path: "C:/Users/uvdsa/OneDrive/Desktop/Internals/$NYA.csv"  # Use forward slashes
+    table_name: nyse_composite_raw
+    preprocessing:
+      skiprows: 1
+      header: 0
+      strip_columns: true
+
+  - path: "C:/Users/uvdsa/OneDrive/Desktop/Internals/$NYTOT.csv"
+    table_name: nytotal_composite_raw
+    preprocessing:
+      skiprows: 1
+      header: 0
+      strip_columns: true

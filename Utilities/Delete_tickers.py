@@ -64,9 +64,11 @@ if __name__ == '__main__':
 
     con = connect(param_dic)
 
-    # Put the tick
-    ticker = 'MTR'
+    # Put the ticker
+    ticker = 'DESP'
 
     delete_tickers(con, ticker)
 
     con.close()
+
+    sys.exit(0)
