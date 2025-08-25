@@ -93,7 +93,7 @@ if __name__ == '__main__':
     con = connect(param_dic)
 
     dateTimeObj = datetime.datetime.now()
-    datee = dateTimeObj - datetime.timedelta(days=0)
+    datee = dateTimeObj - datetime.timedelta(days=1)
     date_object = datee.date()
 
     excel_file = r"D:\Trading Dropbox\Satish Udayagiri\SatishUdayagiri\Trading\Process\Daily_Task\daily_work\Daily_Tech_Reading\Weekly_list.xlsx"

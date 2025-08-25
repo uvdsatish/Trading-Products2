@@ -65,7 +65,7 @@ if __name__ == '__main__':
     con = connect(param_dic)
 
     # Put the ticker
-    ticker = 'DESP'
+    ticker = 'GOGL'
 
     delete_tickers(con, ticker)
 

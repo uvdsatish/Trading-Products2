@@ -211,6 +211,63 @@ def make_directories(pth,dte):
         os.mkdir(pthD)
 
 
+def export_rs_plurality_to_csv_copy(connection, output_path):
+    """
+    Export rs_plurality_count_historical PostgreSQL table to CSV using COPY command.
+    Will overwrite the file if it already exists.
+
+    Parameters:
+    -----------
+    connection : psycopg2.extensions.connection
+        PostgreSQL database connection
+    output_path : str
+        The path where the CSV file should be saved
+
+    Returns:
+    --------
+    str
+        The path where the CSV file was saved
+    """
+    try:
+        import os
+
+        # Ensure the directory exists
+        os.makedirs(os.path.dirname(output_path) if os.path.dirname(output_path) else '.', exist_ok=True)
+
+        # Create a cursor
+        cursor = connection.cursor()
+
+        # Use COPY command to export data - 'w' mode will overwrite existing file
+        with open(output_path, 'w', newline='') as f:
+            # Get column names first
+            cursor.execute("""
+                SELECT array_to_string(
+                    array_agg(column_name ORDER BY ordinal_position),
+                    ','
+                )
+                FROM information_schema.columns
+                WHERE table_name = 'rs_plurality_count_historical';
+            """)
+            headers = cursor.fetchone()[0]
+            f.write(headers + '\n')
+
+            # Copy data
+            cursor.copy_expert(
+                "COPY rs_plurality_count_historical TO STDOUT WITH CSV",
+                f
+            )
+
+        print(f"Data successfully exported to: {output_path}")
+        return output_path
+
+    except Exception as e:
+        print(f"Error exporting data: {str(e)}")
+        raise
+    finally:
+        if cursor:
+            cursor.close()
+
+
 if __name__ == '__main__':
 
     param_dic = {
@@ -254,6 +311,10 @@ if __name__ == '__main__':
     cl_df = c_df[['date','p5090c','p5010c','longtot','shorttot']]
 
     store_plots(lists_dct,df,cl_df,date1,pth)
+
+
+    output_path = "C:/Users/uvdsa/OneDrive/Desktop/rs_plurality_data.csv"
+    export_rs_plurality_to_csv_copy(con, output_path)
 
 
     con.close()
